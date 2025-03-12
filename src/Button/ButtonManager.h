@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include <algorithm>
 #include <stdexcept>
 #include <vector>
 #include <unordered_map>
@@ -25,19 +24,7 @@ public:
 
     ButtonManager& operator=(ButtonManager&& other) noexcept;
 
-    template <typename Name>
-    void addButton(Name&& name)
-    {
-        if (name_to_uuid.contains(name))
-        {
-            throw std::invalid_argument("The name already exists");
-        }
-        updateUUID();
-        const auto uuid = getUUID();
-        button_map.emplace(uuid, Button(uuid, std::forward<Name>(name)));
-        name_to_uuid.emplace(std::forward<Name>(name), uuid);
-        button_view.emplace_back(uuid);
-    }
+    void addButton(const name_t& name);
 
     void deleteButton(const uuid_t& uuid);
 
@@ -54,9 +41,9 @@ private:
     static constexpr uint32_t MAX_NBUTTON = 100;
     uuid_t curr_uuid = 0;
 
-    uuid_t getUUID() const { return curr_uuid; }
+    inline constexpr uuid_t getUUID() const { return curr_uuid; }
 
-    void updateUUID() { ++curr_uuid; }
+    inline void updateUUID() { ++curr_uuid; }
 
     std::vector<uuid_t> button_view{};
     std::unordered_map<name_t, uuid_t> name_to_uuid{};

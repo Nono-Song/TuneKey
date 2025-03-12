@@ -26,6 +26,20 @@ ButtonManager& ButtonManager::operator=(ButtonManager&& other) noexcept
     return *this;
 };
 
+void ButtonManager::addButton(const name_t& name)
+{
+    if (name_to_uuid.contains(name))
+    {
+        throw std::invalid_argument("The name already exists");
+    }
+    updateUUID();
+
+    button_map.emplace(getUUID(), Button(getUUID(), name));
+    name_to_uuid.emplace(name, getUUID());
+    button_view.emplace_back(getUUID());
+}
+
+
 void ButtonManager::deleteButton(const uuid_t& uuid)
 {
     if (const auto nh = button_map.extract(uuid); !nh.empty())
