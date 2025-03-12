@@ -57,6 +57,8 @@
 ### Xcode template
 ## User settings
 xcuserdata/
+*.xcodeproj
+build
 
 ### CMake template
 CMakeLists.txt.user

@@ -5,12 +5,14 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if (MSVC)
+if(MSVC)
     set(GCC_COVERAGE_COMPILE_FLAGS "-Wall")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-else ()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    set(GCC_COVERAGE_COMPILE_FLAGS "-Wall")
+else()
     set(GCC_COVERAGE_COMPILE_FLAGS "-Wall -Wextra -Wpedantic -Wpessimizing-move  -fdiagnostics-all-candidates")
-endif ()
+endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
 
