@@ -55,18 +55,20 @@ void ButtonManager::deleteButton(const uuid_t& uuid)
     }
 }
 
-[[nodiscard]] bool ButtonManager::contains(const uuid_t& uuid) const
-{
-    return button_map.contains(uuid);
-}
-
 [[nodiscard]] const std::vector<uuid_t>& ButtonManager::getView() const { return button_view; }
 
-/*void reorder(const std::vector<uuid_t>::difference_type& idx_from,
-             const std::vector<uuid_t>::difference_type& idx_to)
-{
+void ButtonManager::reorder(const std::vector<uuid_t>::difference_type &idx_from,
+    const std::vector<uuid_t>::difference_type &idx_to) {
     throw std::logic_error("Not implemented");
-}*/
+}
+
+void ButtonManager::startEventLoop() {
+    throw std::logic_error("Not implemented");
+}
+
+void ButtonManager::addEvent(Event &&event) {
+    event_queue_.Push(std::move(event));
+}
 
 void ButtonManager::sort(const std::unique_ptr<Button::Button_Cmp_t>& comp)
 {

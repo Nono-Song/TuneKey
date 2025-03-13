@@ -1,5 +1,5 @@
 #include <fmt/core.h>
-#include "Button/ButtonManager.h"
+#include "ButtonManager.h"
 
 int main()
 {
@@ -11,7 +11,7 @@ int main()
     button_manager.addButton("b2");
     button_manager.addButton("b1");
 
-    button_manager.sort(Button::comparator(Button::SearchKey::NAME));
+    button_manager.sort(Button::comparator(Button::SearchKey::Name));
 
     for (const auto& x : button_manager.getView())
     {
