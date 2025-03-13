@@ -55,6 +55,14 @@ void ButtonManager::reorder(const std::vector<uuid_t>::difference_type &idx_from
     throw std::logic_error("Not implemented");
 }
 
+void ButtonManager::startEventLoop() {
+    throw std::logic_error("Not implemented");
+}
+
+void ButtonManager::addEvent(Event &&event) {
+    event_queue_.Push(std::move(event));
+}
+
 void ButtonManager::sort(const std::unique_ptr<Button::Button_Cmp_t> &comp) {
     std::sort(button_view.begin(), button_view.end(),
               [this, &comp](const uuid_t &u1, const uuid_t &u2) {

@@ -6,6 +6,7 @@
 #include <vector>
 #include <unordered_map>
 #include "Button.h"
+#include "EventQueue.h"
 
 class ButtonManager {
     using uuid_t = Button::uuid_t;
@@ -13,6 +14,7 @@ class ButtonManager {
 
 public:
     ButtonManager() = default;
+
 
     ~ButtonManager() = default;
 
@@ -25,15 +27,17 @@ public:
     ButtonManager &operator=(ButtonManager &&other) noexcept;
 
     void addButton(const name_t &name);
-
     void deleteButton(const uuid_t &uuid);
 
     const std::vector<uuid_t> &getView() const;
 
     void reorder(const std::vector<uuid_t>::difference_type &idx_from,
                  const std::vector<uuid_t>::difference_type &idx_to);
-
     void sort(const std::unique_ptr<Button::Button_Cmp_t> &comp);
+
+    void startEventLoop();
+    void addEvent(Event &&event);
+
 
 private:
     static constexpr uint32_t MAX_NBUTTON = 100;
@@ -46,4 +50,6 @@ private:
     std::vector<uuid_t> button_view{};
     std::unordered_map<name_t, uuid_t> name_to_uuid{};
     std::unordered_map<uuid_t, Button> button_map{};
+
+    EventQueue event_queue_{};
 };

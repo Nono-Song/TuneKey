@@ -26,14 +26,19 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 # Libraries
+add_library(EventQueue include/EventQueue/EventQueue.h include/EventQueue/EventQueue.cpp)
+target_include_directories(EventQueue PRIVATE include/Button)
+
+
 add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.h)
-target_include_directories(ButtonManager PUBLIC include/Button)
+target_include_directories(ButtonManager PUBLIC include/Button  include/EventQueue)
 
 add_library(Button include/Button/Button.cpp include/Button/Button.h)
 
 
+
 #Library dependencies
-target_link_libraries(ButtonManager PRIVATE Button)
+target_link_libraries(ButtonManager PRIVATE Button EventQueue)
 target_link_libraries(${PROJECT_NAME} PRIVATE ButtonManager)
 
 # External Libraries
