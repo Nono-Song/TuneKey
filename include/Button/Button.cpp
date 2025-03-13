@@ -49,7 +49,7 @@ void Button::pauseAudio() const {
 }
 
 void Button::release() {
-    throw std::logic_error("Not implemented");
+    // TODO: Button::release()
 }
 
 void Button::modifyFilePath(std::string &&path) {
