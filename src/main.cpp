@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <fmt/core.h>
 #include "ButtonManager.h"
 
@@ -11,7 +13,22 @@ int main()
     button_manager.addButton("b2");
     button_manager.addButton("b1");
 
-    button_manager.sort(Button::comparator(Button::SearchKey::Name));
+    std::string opt;
+    std::cin >> opt;
+    if (opt == "name")
+    {
+        button_manager.sortBy(Button::SortKey::Name);
+    }
+    else if (opt == "uuid")
+    {
+        button_manager.sortBy(Button::SortKey::UUID);
+    }
+    else
+    {
+        fmt::print("Wrong option.\n");
+        return 0;
+    }
+
 
     for (const auto& x : button_manager.getView())
     {

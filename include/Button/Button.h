@@ -6,22 +6,35 @@
 #include <string>
 #include <cstdint>
 #include <functional>
-#include <memory>
 
 #include <boost/filesystem.hpp>
 
-class Button {
+class Button
+{
+    template <auto>
+    struct always_false : std::false_type
+    {
+    };
+
 public:
     using name_t = std::string;
     using uuid_t = uint32_t;
     using path_t = boost::filesystem::path;
-    using Button_Cmp_t = std::function<bool(const Button &, const Button &)>;
 
-    enum class SearchKey {
+    enum class SortKey
+    {
         Name, UUID
     };
 
-    enum class ActionType {
+    template <typename U>
+    using Proj = std::function<U(const Button&)>;
+    using ProjVariant = std::variant<
+        Proj<name_t>,
+        Proj<uuid_t>>;
+
+
+    enum class ActionType
+    {
         Play, Pause, Release, ModifyPath, ModifyName
     };
 
@@ -33,13 +46,27 @@ public:
 
     [[nodiscard]] name_t getName() const { return name_; }
 
-    static std::unique_ptr<Button_Cmp_t> comparator(SearchKey);
+    static ProjVariant Projector(const SortKey key)
+    {
+        switch (key)
+        {
+        case SortKey::Name: return createProjector<&Button::name_>();
+        case SortKey::UUID: return createProjector<&Button::uuid_>();
+        default: throw std::invalid_argument("Invalid Key");
+        }
+    }
 
-    void execute(const ActionType &, const std::any &);
+    void execute(const ActionType&, const std::any&);
 
 private:
-    template<auto MemberPtr>
-    static std::unique_ptr<Button_Cmp_t> createComparator();
+    template <auto MemberPtr>
+    static auto createProjector() -> ProjVariant
+    {
+        return [](const Button& btn)
+        {
+            return btn.*MemberPtr;
+        };
+    }
 
     /*------------------Operations--------------------------*/
     // Play the audio file if file path is valid. Interface with AudioController
@@ -53,13 +80,11 @@ private:
     void release();
 
     // Modify the file path. Need to first release any hold resources
-    void modifyFilePath(std::string &&);
+    void modifyFilePath(std::string&&);
 
     // Use one single template function to do perfect forwarding
-    template<typename Name>
-    void modifyName(Name &&new_name) {
-        name_ = std::forward<Name>(new_name);
-    }
+    template <typename Name>
+    void modifyName(Name&&);
 
     // Todo: Time of creation
     // Todo: Time of last usage
@@ -68,3 +93,9 @@ private:
     // Todo: Need a more specific way to represent file path
     path_t file_path_;
 };
+
+template <typename Name>
+void Button::modifyName(Name&& new_name)
+{
+    name_ = std::forward<Name>(new_name);
+}
