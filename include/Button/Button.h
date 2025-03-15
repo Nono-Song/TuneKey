@@ -56,12 +56,12 @@ public:
     }
 
     // Execute an action with parameter
-    void execute(const ActionType &, const std::any &);
+    void execute(const ActionType&, const std::any&);
 
 private:
     // Create a projector that project a button to one of its member data
     // according to the template variable MemberPtr
-    template<auto MemberPtr>
+    template <auto MemberPtr>
     static auto createProjector() -> ProjVariant
     {
         return [](const Button& btn)
@@ -85,8 +85,9 @@ private:
     void modifyFilePath(std::string&&);
 
     // Use one single template function to do perfect forwarding
-    template<typename Name>
-    void Button::modifyName(Name &&new_name) {
+    template <typename Name>
+    void modifyName(Name&& new_name)
+    {
         name_ = std::forward<Name>(new_name);
     }
 

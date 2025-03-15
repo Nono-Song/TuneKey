@@ -12,7 +12,8 @@
 #include "Button.h"
 #include "EventQueue.h"
 
-class ButtonManager {
+class ButtonManager
+{
     using uuid_t = Button::uuid_t;
     using name_t = Button::name_t;
 
@@ -29,18 +30,18 @@ public:
 
     ButtonManager& operator=(ButtonManager&& other) noexcept;
 
-    const Button &operator[](const uuid_t &uuid) const;
+    const Button& operator[](const uuid_t& uuid) const;
 
-    void addButton(const name_t &name);
+    void addButton(const name_t& name);
 
-    void deleteButton(const uuid_t &uuid);
+    void deleteButton(const uuid_t& uuid);
 
-    [[nodiscard]] const std::vector<uuid_t> &getView() const;
+    [[nodiscard]] const std::vector<uuid_t>& getView() const;
 
-    void reorder(const std::vector<uuid_t>::difference_type &idx_from,
-                 const std::vector<uuid_t>::difference_type &idx_to);
+    void reorder(const std::vector<uuid_t>::difference_type& idx_from,
+                 const std::vector<uuid_t>::difference_type& idx_to);
 
-    void sortBy(Button::SortKey);
+    void sortBy(Button::SortKey, bool reverse = false);
 
 
     void startEventLoop();
