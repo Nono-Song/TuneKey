@@ -11,11 +11,6 @@
 
 class Button
 {
-    template <auto>
-    struct always_false : std::false_type
-    {
-    };
-
 public:
     using name_t = std::string;
     using uuid_t = uint32_t;
@@ -40,12 +35,16 @@ public:
 
     Button() = delete;
 
-    ~Button();
+    ~Button() noexcept;
 
-    Button(uuid_t, name_t, std::string name = "");
+    Button(uuid_t, name_t, std::string path = "");
 
+    /*****************************************************
+     *                     Getter                       *
+     ****************************************************/
     [[nodiscard]] name_t getName() const { return name_; }
 
+    // The public method to obtain a projector given a key
     static ProjVariant Projector(const SortKey key)
     {
         switch (key)
@@ -56,10 +55,13 @@ public:
         }
     }
 
-    void execute(const ActionType&, const std::any&);
+    // Execute an action with parameter
+    void execute(const ActionType &, const std::any &);
 
 private:
-    template <auto MemberPtr>
+    // Create a projector that project a button to one of its member data
+    // according to the template variable MemberPtr
+    template<auto MemberPtr>
     static auto createProjector() -> ProjVariant
     {
         return [](const Button& btn)
@@ -83,8 +85,10 @@ private:
     void modifyFilePath(std::string&&);
 
     // Use one single template function to do perfect forwarding
-    template <typename Name>
-    void modifyName(Name&&);
+    template<typename Name>
+    void Button::modifyName(Name &&new_name) {
+        name_ = std::forward<Name>(new_name);
+    }
 
     // Todo: Time of creation
     // Todo: Time of last usage
@@ -93,9 +97,3 @@ private:
     // Todo: Need a more specific way to represent file path
     path_t file_path_;
 };
-
-template <typename Name>
-void Button::modifyName(Name&& new_name)
-{
-    name_ = std::forward<Name>(new_name);
-}

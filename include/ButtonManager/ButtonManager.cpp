@@ -8,9 +8,6 @@
 #include <unordered_map>
 #include "ButtonManager.h"
 
-using uuid_t = Button::uuid_t;
-using name_t = Button::name_t;
-
 ButtonManager::ButtonManager(ButtonManager&& other) noexcept : button_view(std::move(other.button_view)),
                                                                name_to_uuid(std::move(other.name_to_uuid)),
                                                                button_map(std::move(other.button_map))
@@ -23,6 +20,10 @@ ButtonManager& ButtonManager::operator=(ButtonManager&& other) noexcept
     name_to_uuid = std::move(other.name_to_uuid);
     button_map = std::move(other.button_map);
     return *this;
+}
+
+const Button &ButtonManager::operator[](const uuid_t &uuid) const {
+    return button_map.at(uuid);
 };
 
 void ButtonManager::addButton(const name_t& name)
@@ -72,7 +73,7 @@ void ButtonManager::sortBy(const Button::SortKey key)
     );
 }
 
-const std::vector<uuid_t>& ButtonManager::getView() const { return button_view; }
+const std::vector<ButtonManager::uuid_t> &ButtonManager::getView() const { return button_view; }
 
 void ButtonManager::reorder(const std::vector<uuid_t>::difference_type& idx_from,
                             const std::vector<uuid_t>::difference_type& idx_to)

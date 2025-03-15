@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 
-Button::~Button() { this->release(); };
+Button::~Button() noexcept { this->release(); };
 
 Button::Button(uuid_t uuid, name_t name, std::string path)
     : name_(std::move(name)), uuid_(uuid), file_path_(std::move(path)) {
