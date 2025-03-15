@@ -22,7 +22,8 @@ ButtonManager& ButtonManager::operator=(ButtonManager&& other) noexcept
     return *this;
 }
 
-const Button &ButtonManager::operator[](const uuid_t &uuid) const {
+const Button& ButtonManager::operator[](const uuid_t& uuid) const
+{
     return button_map.at(uuid);
 };
 
@@ -55,17 +56,20 @@ void ButtonManager::deleteButton(const uuid_t& uuid)
     }
 }
 
-void ButtonManager::sortBy(const Button::SortKey key)
+void ButtonManager::sortBy(const Button::SortKey key, bool reverse)
 {
     // Why I can't use auto& proj here?
-    std::visit([this](const auto& proj)
+    std::visit([this, reverse](const auto& proj)
                {
-                   std::ranges::sort(button_view,
-                                     std::less{},
-                                     [this, &proj](const uuid_t id)
-                                     {
-                                         return proj(button_map.at(id));
-                                     }
+                   auto cmp = [reverse](const auto& x, const auto& y)
+                   {
+                       return reverse ? std::greater<>{}(x, y) : std::less<>{}(x, y);
+                   };
+                   auto projector = [this, &proj](const uuid_t id)
+                   {
+                       return proj(button_map.at(id));
+                   };
+                   std::ranges::sort(button_view, cmp, projector
                    );
                }
                ,
@@ -73,12 +77,19 @@ void ButtonManager::sortBy(const Button::SortKey key)
     );
 }
 
-const std::vector<ButtonManager::uuid_t> &ButtonManager::getView() const { return button_view; }
+const std::vector<ButtonManager::uuid_t>& ButtonManager::getView() const { return button_view; }
 
 void ButtonManager::reorder(const std::vector<uuid_t>::difference_type& idx_from,
                             const std::vector<uuid_t>::difference_type& idx_to)
 {
-    throw std::logic_error("Not implemented");
+    if (idx_from == idx_to)
+    {
+        return;
+    }
+
+    const auto id = button_view.at(idx_from);
+    erase(button_view, id);
+    button_view.insert(button_view.cbegin() + idx_to, id);
 }
 
 void ButtonManager::startEventLoop()
