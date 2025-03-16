@@ -10,20 +10,24 @@
 #include <mutex>
 #include <condition_variable>
 
-struct Event {
-    Button::uuid_t uuid;
+struct Event
+{
+    Button::uuid_t uuid; // Target button's uuid
     Button::ActionType action;
     std::any params;
 };
 
-class EventQueue {
+class EventQueue
+{
 public:
-    void Push(Event &&evt);
+    void Push(Event&& evt);
 
     Event Pop();
 
 private:
+    static constexpr std::size_t max_size = 128;
     std::queue<Event> queue_;
     std::mutex mutex_;
-    std::condition_variable condition_;
+    std::condition_variable_any nonempty_;
+    std::condition_variable_any notfull_;
 };
