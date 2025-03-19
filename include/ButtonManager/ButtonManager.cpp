@@ -91,13 +91,3 @@ void ButtonManager::reorder(const std::vector<uuid_t>::difference_type& idx_from
     erase(button_view, id);
     button_view.insert(button_view.cbegin() + idx_to, id);
 }
-
-void ButtonManager::startEventLoop()
-{
-    throw std::logic_error("Not implemented");
-}
-
-void ButtonManager::addEvent(Event&& event)
-{
-    event_queue_.Push(std::move(event));
-}

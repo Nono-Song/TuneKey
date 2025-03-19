@@ -6,6 +6,7 @@
 #include <string>
 #include <cstdint>
 #include <functional>
+#include <variant>
 
 #include <boost/filesystem.hpp>
 

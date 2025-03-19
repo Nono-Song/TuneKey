@@ -38,25 +38,14 @@ target_link_libraries(${PROJECT_NAME}
         fmt::fmt)
 
 # Libraries
-# EventQueue
-add_library(EventQueue include/EventQueue/EventQueue.h include/EventQueue/EventQueue.cpp)
-target_include_directories(EventQueue
-        PRIVATE
-        include/Button)
-target_link_libraries(EventQueue
-        PRIVATE
-        Button)
-
 # ButtonManager
 add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.h)
 target_include_directories(ButtonManager
         PUBLIC
-        include/Button
-        include/EventQueue)
+        include/Button)
 target_link_libraries(ButtonManager
         PRIVATE
-        Button
-        EventQueue)
+        Button)
 target_link_libraries(ButtonManager
         PRIVATE
         fmt::fmt)

@@ -10,7 +10,6 @@
 #include <fmt/core.h>
 
 #include "Button.h"
-#include "EventQueue.h"
 
 class ButtonManager
 {
@@ -43,10 +42,6 @@ public:
 
     void sortBy(Button::SortKey, bool reverse = false);
 
-
-    void startEventLoop();
-    void addEvent(Event&& event);
-
 private
 :
     static constexpr uint32_t MAX_NBUTTON = 100;
@@ -65,6 +60,4 @@ private
     std::vector<uuid_t> button_view{};
     std::unordered_map<name_t, uuid_t> name_to_uuid{};
     std::unordered_map<uuid_t, Button> button_map{};
-
-    EventQueue event_queue_{};
 };
