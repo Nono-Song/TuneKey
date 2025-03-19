@@ -43,8 +43,6 @@ public:
 
     void sortBy(Button::SortKey, bool reverse = false);
 
-
-    void startEventLoop();
     void addEvent(Event&& event);
 
 private
