@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (MSVC)
-    set(GCC_COVERAGE_COMPILE_FLAGS "-Wall")
+    set(GCC_COVERAGE_COMPILE_FLAGS "/Wall /utf-8")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     set(GCC_COVERAGE_COMPILE_FLAGS "-Wall -Wextra -Wpedantic")
@@ -42,10 +42,15 @@ target_link_libraries(${PROJECT_NAME}
 add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.h)
 target_include_directories(ButtonManager
         PUBLIC
-        include/Button)
+        include/Button
+        include/AudioController)
 target_link_libraries(ButtonManager
         PRIVATE
         Button)
+target_link_libraries(ButtonManager
+        PRIVATE
+        AudioController
+)
 target_link_libraries(ButtonManager
         PRIVATE
         fmt::fmt)
@@ -57,5 +62,9 @@ target_link_libraries(Button
         Boost::filesystem
         Boost::system)
 
-
-
+# AudioController
+add_library(AudioController include/AudioController/AudioController.cpp include/AudioController/AudioController.h)
+target_link_libraries(AudioController
+        PUBLIC
+        Boost::filesystem
+        Boost::system)

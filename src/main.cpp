@@ -1,43 +1,43 @@
 #include <iostream>
 
 #include <fmt/core.h>
-#include "ButtonManager.h"
+#include <iostream>
+#include <string>
+#include <AudioController.h>
 
 int main()
 {
-    ButtonManager button_manager;
-
-    button_manager.addButton("b5");
-    button_manager.addButton("b4");
-    button_manager.addButton("b3");
-    button_manager.addButton("b2");
-    button_manager.addButton("b1");
-
-    std::string opt;
-    std::cin >> opt;
-    if (opt == "name")
+    AudioController controller{};
+    controller.start();
+    std::string input;
+    while (std::cin >> input)
     {
-        button_manager.sortBy(Button::SortKey::Name);
-    }
-    else if (opt == "uuid")
-    {
-        button_manager.sortBy(Button::SortKey::UUID);
-    }
-    else
-    {
-        fmt::print("Wrong option.\n");
-        return 0;
+        fmt::print("Input: {}\n", input);
+
+        if (input == "exit")
+        {
+            return 0;
+        }
+        if (input == "stop")
+        {
+            controller.stop();
+        }
+
+        if (input == "play")
+        {
+            controller.play("");
+        }
+
+        if (input == "pause")
+        {
+            controller.pause();
+        }
+
+        if (input == "resume")
+        {
+            controller.resume();
+        }
     }
 
-
-    for (const auto& x : button_manager.getView())
-    {
-        fmt::print("{}, ", x);
-    }
     return 0;
 }
-
-// TIP See CLion help at <a
-// href="https://www.jetbrains.com/help/clion/">jetbrains.com/help/clion/</a>.
-//  Also, you can try interactive lessons for CLion by selecting
-//  'Help | Learn IDE Features' from the main menu.
