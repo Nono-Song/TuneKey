@@ -17,6 +17,9 @@ public:
     ~AudioController();
 
     void start();
+    void shutdown();
+
+    // Change state
     void play(boost::filesystem::path path);
     void pause();
     void resume();
@@ -57,7 +60,7 @@ private:
     // Shared data
     State curr_state_{State::Idle};
     boost::filesystem::path curr_audio_path_;
-    std::chrono::seconds remaining_time;
+    std::atomic<int> remaining_time_;
 };
 
 
