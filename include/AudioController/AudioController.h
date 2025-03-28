@@ -15,6 +15,10 @@ class AudioController
 public:
     AudioController();
     ~AudioController();
+    AudioController(const AudioController&) = delete;
+    AudioController& operator=(const AudioController&) = delete;
+    AudioController(AudioController&&) = delete;
+    AudioController& operator=(AudioController&&) = delete;
 
     void start();
     void shutdown();
@@ -44,8 +48,10 @@ public:
 private:
     enum class State
     {
-        Idle, Play, Pause
+        Offline, Idle, Play, Pause
     };
+
+    void state_change_epilogue();
 
     // To SDL2?
     void playAudio(const std::stop_token& stoken);
@@ -53,14 +59,14 @@ private:
     // Todo: void resumeAudio() const;
 
     std::jthread state_machine_thread_;
-    std::jthread audio_thread_;
     mutable std::shared_mutex state_machine_mutex_;
     std::condition_variable_any state_machine_condition_;
 
     // Shared data
-    State curr_state_{State::Idle};
-    boost::filesystem::path curr_audio_path_;
-    std::atomic<int> remaining_time_;
+    State curr_state_{State::Offline};
+    std::atomic_int duration_{10};
+    std::atomic_bool audio_finished_naturally_{true};
+    boost::filesystem::path curr_audio_path_{};
 };
 
 

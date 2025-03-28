@@ -4,12 +4,11 @@
 
 #include "AudioController.h"
 #include <chrono>
-#include <fmt/core.h>
-#include <fmt/chrono.h>
+#include <fmt/base.h>
 
 using namespace std::literals::chrono_literals;
 
-AudioController::AudioController() : remaining_time_(10)
+AudioController::AudioController()
 {
 }
 
@@ -20,28 +19,34 @@ AudioController::~AudioController()
 
 void AudioController::start()
 {
+    atomic_setter<&AudioController::curr_state_>(State::Idle);
     state_machine_thread_ = std::jthread{std::bind_front(&AudioController::stateMachineLoop, this)};
 }
 
 void AudioController::shutdown()
 {
-    audio_thread_.request_stop();
+    atomic_setter<&AudioController::curr_state_>(State::Offline);
     state_machine_thread_.request_stop();
-    atomic_setter<&AudioController::curr_state_>(State::Idle);
-    state_machine_condition_.notify_all();
+    state_change_epilogue();
 }
 
 void AudioController::play(boost::filesystem::path path)
 {
-    stop();
+    if (atomic_getter<&AudioController::curr_state_>() == State::Offline)
+    {
+        start();
+    }
+    else
+    {
+        stop();
+    }
+
     {
         std::unique_lock lock(state_machine_mutex_);
         curr_audio_path_ = std::move(path);
-        remaining_time_.store(10);
         curr_state_ = State::Play;
     }
-    state_machine_condition_.notify_one();
-    std::this_thread::sleep_for(20ms);
+    state_change_epilogue();
 }
 
 void AudioController::pause()
@@ -53,8 +58,7 @@ void AudioController::pause()
             curr_state_ = State::Pause;
         }
     }
-    state_machine_condition_.notify_one();
-    std::this_thread::sleep_for(20ms);
+    state_change_epilogue();
 }
 
 void AudioController::resume()
@@ -66,48 +70,51 @@ void AudioController::resume()
             curr_state_ = State::Play;
         }
     }
-    state_machine_condition_.notify_one();
-    std::this_thread::sleep_for(20ms);
+    state_change_epilogue();
 }
 
 void AudioController::stop()
 {
-    atomic_setter<&AudioController::curr_state_>(State::Idle);
-    state_machine_condition_.notify_one();
-    std::this_thread::sleep_for(20ms);
+    {
+        std::unique_lock lock(state_machine_mutex_);
+        if (curr_state_ == State::Offline)
+        {
+            return;
+        }
+        curr_state_ = State::Idle;
+    }
+    state_change_epilogue();
 }
 
 
 void AudioController::playAudio(const std::stop_token& stoken)
 {
-    if (atomic_getter<&AudioController::curr_state_>() != State::Play)
-    {
-        return;
-    }
-
-    // Todo: Need to Update metadata for the audio
-    auto filepath = atomic_getter<&AudioController::curr_audio_path_>();
-
     // Play the audio and wait for possible pause or new play request
-    while (!stoken.stop_requested() &&
-        remaining_time_.load() > 0 &&
-        atomic_getter<&AudioController::curr_state_>() == State::Play)
+    const auto duration = duration_.load();
+    for (auto i = 0; i < duration; ++i)
     {
+        if (stoken.stop_requested())
+        {
+            std::puts("Audio Interrupted\n");
+            audio_finished_naturally_.store(false);
+            duration_.store(duration - i);
+            return;
+        }
+
         std::this_thread::sleep_for(1s);
-        remaining_time_.fetch_sub(1);
-        fmt::print("Remaining time: {}s\n", remaining_time_.load());
+        fmt::print("Audio Playing... {}s\n", (10 - duration) + i + 1);
     }
 
-    if (remaining_time_.load() > 0)
-    {
-        std::puts("Audio interrupted\n");
-    }
-    else
-    {
-        std::puts("Audio finished\n");
-        atomic_setter<&AudioController::curr_state_>(State::Idle);
-        state_machine_condition_.notify_one();
-    }
+    duration_.store(0);
+
+    std::puts("Audio finished\n");
+    audio_finished_naturally_.store(true);
+    state_machine_condition_.notify_one();
+}
+
+void AudioController::state_change_epilogue()
+{
+    state_machine_condition_.notify_one();
 }
 
 
@@ -116,28 +123,41 @@ void AudioController::stateMachineLoop(const std::stop_token& stoken)
     while (!stoken.stop_requested())
     {
         // Will this mutex be destroyed and recreated in each iteration?
-        std::shared_lock lock(state_machine_mutex_);
+        std::unique_lock lock(state_machine_mutex_);
         switch (curr_state_)
         {
+        case State::Offline:
+            return;
         case State::Idle:
             state_machine_condition_.wait(lock, stoken, [this]() { return curr_state_ == State::Play; });
             break;
         case State::Play:
             // Play audio until it ends or interrupted by pause or new play request
             // Update metadata for the audio
-
-            audio_thread_ = std::jthread(std::bind_front(&AudioController::playAudio, this));
-            state_machine_condition_.wait(lock, stoken, [this]()
-                                          {
-                                              return curr_state_ != State::Play;
-                                          }
-            );
-
-            if (audio_thread_.get_stop_token().stop_possible())
             {
-                audio_thread_.request_stop();
-            }
+                if (audio_finished_naturally_.load())
+                {
+                    duration_.store(10);
+                }
 
+                audio_finished_naturally_.store(false);
+                auto audio_thread = std::jthread([this]<typename T>(T&& PH1)
+                {
+                    playAudio(std::forward<T>(PH1));
+                });
+
+                state_machine_condition_.wait(lock, stoken, [this]()
+                                              {
+                                                  return curr_state_ != State::Play || audio_finished_naturally_.load();
+                                              }
+                );
+
+                audio_thread.request_stop();
+                if (audio_finished_naturally_.load())
+                {
+                    curr_state_ = State::Idle;
+                }
+            }
             break;
         case State::Pause:
             state_machine_condition_.wait(lock, stoken, [this]()
