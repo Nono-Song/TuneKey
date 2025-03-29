@@ -7,10 +7,21 @@
 #include <vector>
 #include <unordered_map>
 #include "ButtonManager.h"
+#include "AudioController.h"
 
-ButtonManager::ButtonManager(ButtonManager&& other) noexcept : button_view(std::move(other.button_view)),
+ButtonManager::ButtonManager()
+{
+    audio_controller = std::make_unique<AudioController>();
+}
+
+
+ButtonManager::ButtonManager(ButtonManager&& other) noexcept : audio_controller(std::move(other.audio_controller)),
+                                                               button_map(std::move(other.button_map)),
+                                                               button_view(std::move(other.button_view)),
                                                                name_to_uuid(std::move(other.name_to_uuid)),
-                                                               button_map(std::move(other.button_map))
+                                                               active_button_(other.active_button_)
+
+
 {
 }
 
@@ -19,15 +30,17 @@ ButtonManager& ButtonManager::operator=(ButtonManager&& other) noexcept
     button_view = std::move(other.button_view);
     name_to_uuid = std::move(other.name_to_uuid);
     button_map = std::move(other.button_map);
+    audio_controller = std::move(other.audio_controller);
+    active_button_ = other.active_button_;
     return *this;
 }
 
-const Button& ButtonManager::operator[](const uuid_t& uuid) const
+Button& ButtonManager::operator[](const uuid_t& uuid)
 {
     return button_map.at(uuid);
 };
 
-void ButtonManager::addButton(const name_t& name)
+ButtonManager::uuid_t ButtonManager::addButton(const name_t& name)
 {
     if (name_to_uuid.contains(name))
     {
@@ -35,9 +48,16 @@ void ButtonManager::addButton(const name_t& name)
     }
     updateUUID();
 
-    button_map.emplace(getUUID(), Button(getUUID(), name));
+    auto createButton = [this, &name]()
+    {
+        return Button(getUUID(), name, this, audio_controller.get());
+    };
+
+    button_map.emplace(getUUID(), createButton());
     name_to_uuid.emplace(name, getUUID());
     button_view.emplace_back(getUUID());
+
+    return getUUID();
 }
 
 
@@ -90,4 +110,19 @@ void ButtonManager::reorder(const std::vector<uuid_t>::difference_type& idx_from
     const auto id = button_view.at(idx_from);
     erase(button_view, id);
     button_view.insert(button_view.cbegin() + idx_to, id);
+}
+
+const std::optional<ButtonManager::uuid_t>& ButtonManager::getActiveButton() const
+{
+    return active_button_;
+}
+
+void ButtonManager::setActiveButton(const uuid_t& uuid)
+{
+    active_button_ = uuid;
+}
+
+void ButtonManager::clearActiveButton()
+{
+    active_button_.reset();
 }

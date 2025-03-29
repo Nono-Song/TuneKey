@@ -5,11 +5,11 @@
 #pragma once
 #include <vector>
 #include <unordered_map>
-#include <algorithm>
-
-#include <fmt/core.h>
-
+#include <memory>
 #include "Button.h"
+#include <optional>
+
+class AudioController;
 
 class ButtonManager
 {
@@ -17,7 +17,7 @@ class ButtonManager
     using name_t = Button::name_t;
 
 public:
-    ButtonManager() = default;
+    ButtonManager();
 
     ~ButtonManager() = default;
 
@@ -29,9 +29,9 @@ public:
 
     ButtonManager& operator=(ButtonManager&& other) noexcept;
 
-    const Button& operator[](const uuid_t& uuid) const;
+    Button& operator[](const uuid_t& uuid);
 
-    void addButton(const name_t& name);
+    uuid_t addButton(const name_t& name);
 
     void deleteButton(const uuid_t& uuid);
 
@@ -41,6 +41,10 @@ public:
                  const std::vector<uuid_t>::difference_type& idx_to);
 
     void sortBy(Button::SortKey, bool reverse = false);
+
+    [[nodiscard]] const std::optional<uuid_t>& getActiveButton() const;
+    void setActiveButton(const uuid_t& uuid);
+    void clearActiveButton();
 
 private
 :
@@ -52,12 +56,14 @@ private
         return curr_uuid;
     }
 
-    inline void updateUUID()
+    void updateUUID()
     {
         ++curr_uuid;
     }
 
+    std::unique_ptr<AudioController> audio_controller{};
+    std::unordered_map<uuid_t, Button> button_map{};
     std::vector<uuid_t> button_view{};
     std::unordered_map<name_t, uuid_t> name_to_uuid{};
-    std::unordered_map<uuid_t, Button> button_map{};
+    std::optional<uuid_t> active_button_{};
 };

@@ -10,6 +10,11 @@
 
 #include <boost/filesystem.hpp>
 
+#include "AudioController.h"
+
+class AudioController;
+class ButtonManager;
+
 class Button
 {
 public:
@@ -31,14 +36,28 @@ public:
 
     enum class ActionType
     {
-        Play, Pause, Release, ModifyPath, ModifyName
+        Play, Pause, Resume, Release, ModifyPath, ModifyName
     };
 
     Button() = delete;
 
     ~Button() noexcept;
 
-    Button(uuid_t, name_t, std::string path = "");
+    Button(uuid_t, name_t, ButtonManager*, AudioController*, const std::string& path = "");
+
+    Button(const Button& other) = delete;
+
+    Button(Button&& other) noexcept
+        : name_{std::move(other.name_)},
+          uuid_{other.uuid_},
+          file_path_{std::move(other.file_path_)},
+          audio_controller_{other.audio_controller_},
+          button_manager_(other.button_manager_)
+    {
+    }
+
+    Button& operator=(const Button& other) = delete;
+    Button& operator=(Button&& other) = delete;
 
     /*****************************************************
      *                     Getter                       *
@@ -48,6 +67,10 @@ public:
     // The public method to obtain a projector given a key
     static ProjVariant Projector(const SortKey key)
     {
+        // if constexpr (key == SortKey::Name)
+        // {
+        //     return createProjector<&Button::name_>();
+        // }
         switch (key)
         {
         case SortKey::Name: return createProjector<&Button::name_>();
@@ -57,7 +80,7 @@ public:
     }
 
     // Execute an action with parameter
-    void execute(const ActionType&, const std::any&);
+    void execute(const ActionType&, const std::any& param = {});
 
 private:
     // Create a projector that project a button to one of its member data
@@ -78,12 +101,17 @@ private:
 
     // Pause the audio without releasing the resources. Only release the resources after a timeout
     void pauseAudio() const;
+    void resumeAudio() const;
 
     // Stop and release the resources (file). Interface to FileController
-    void release();
+    void release() const;
 
     // Modify the file path. Need to first release any hold resources
-    void modifyFilePath(std::string&&);
+    template <typename T>
+    void modifyFilePath(T&& arg)
+    {
+        file_path_ = std::forward<T>(arg);
+    }
 
     // Use one single template function to do perfect forwarding
     template <typename Name>
@@ -95,7 +123,8 @@ private:
     // Todo: Time of creation
     // Todo: Time of last usage
     name_t name_;
-    uuid_t uuid_;
-    // Todo: Need a more specific way to represent file path
+    const uuid_t uuid_;
     path_t file_path_;
+    AudioController* const audio_controller_;
+    ButtonManager* const button_manager_;
 };

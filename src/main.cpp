@@ -1,41 +1,43 @@
 #include <iostream>
 
-#include <fmt/core.h>
-#include <iostream>
+#include <fmt/base.h>
 #include <string>
-#include <AudioController.h>
+#include <SDL3/SDL.h>
+
+#include "ButtonManager.h"
 
 int main()
 {
-    AudioController controller{};
-    controller.start();
+    ButtonManager bm{};
+    auto id = bm.addButton("b1");
     std::string input;
     while (std::cin >> input)
     {
-        fmt::print("Input: {}\n", input);
-
+        // fmt::print("Input: {}\n", input);
+        SDL_Log("Input: %s\n", input.c_str());
         if (input == "exit")
         {
+            bm[id].execute(Button::ActionType::Release);
             return 0;
         }
         if (input == "stop")
         {
-            controller.stop();
+            bm[id].execute(Button::ActionType::Release);
         }
 
         if (input == "play")
         {
-            controller.play("");
+            bm[id].execute(Button::ActionType::Play, "path1");
         }
 
         if (input == "pause")
         {
-            controller.pause();
+            bm[id].execute(Button::ActionType::Pause);
         }
 
         if (input == "resume")
         {
-            controller.resume();
+            bm[id].execute(Button::ActionType::Resume);
         }
     }
 
