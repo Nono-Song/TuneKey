@@ -10,19 +10,58 @@
 #include <mutex>
 #include <condition_variable>
 
-struct Event
-{
-    Button::uuid_t uuid; // Target button's uuid
-    Button::ActionType action;
-    std::any params;
-};
+#include <fmt/format.h>
 
+
+template <typename T>
 class EventQueue
 {
 public:
-    void Push(Event&& evt);
+    using identifier_type = typename T::identifier_type;
+    using action_type = typename T::action_type;
 
-    Event Pop();
+    struct Event
+    {
+        Event(identifier_type id, action_type action, std::any params) : uuid(id), action(action),
+                                                                         params(std::move(params))
+        {
+        }
+
+        const std::tuple<>& get_content() const
+        {
+            return {uuid, action, params};
+        }
+
+        const identifier_type uuid;
+        const action_type action;
+        const std::any params;
+    };
+
+    void Push(Event&& evt)
+    {
+        std::unique_lock lock(mutex_);
+        while (queue_.size() > max_size)
+        {
+            notfull_.wait(lock);
+        }
+
+        queue_.push(std::move(evt));
+        nonempty_.notify_all();
+    }
+
+    Event& Pop()
+    {
+        std::unique_lock lock(mutex_);
+        while (queue_.empty())
+        {
+            nonempty_.wait(lock);
+        }
+
+        auto event = queue_.front();
+        queue_.pop();
+        notfull_.notify_all();
+        return event;
+    }
 
 private:
     static constexpr std::size_t max_size = 128;

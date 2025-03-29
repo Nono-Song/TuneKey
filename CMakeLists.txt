@@ -14,7 +14,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 else ()
     set(DBoost_DIR "home/noelucille/boost_1_87_0/stage/lib/cmake/Boost-1.87_0")
     set(GCC_COVERAGE_COMPILE_FLAGS
-            "-Wall -Wextra -Wpedantic -pedantic-errors -Wpessimizing-move -fdiagnostics-all-candidates")
+            "-Wall -Wextra -Wpedantic -pedantic-errors -Wpessimizing-move")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
 endif ()
 
@@ -39,7 +39,7 @@ target_link_libraries(${PROJECT_NAME}
 
 # Libraries
 # EventQueue
-add_library(EventQueue include/EventQueue/EventQueue.h include/EventQueue/EventQueue.cpp)
+add_library(EventQueue include/EventQueue/EventQueue.h)
 target_include_directories(EventQueue
         PRIVATE
         include/Button)
