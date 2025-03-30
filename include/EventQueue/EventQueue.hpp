@@ -7,15 +7,37 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#include <stdexcept>
+#include <utility>
+
+class QueueStoppedException final : public std::runtime_error
+{
+public:
+    QueueStoppedException() : std::runtime_error("EventQueue operation aborted due to stop request")
+    {
+    }
+};
 
 template <typename Event>
 class EventQueue
 {
 public:
+    explicit EventQueue(std::stop_token stoken): stoken_(std::move(stoken))
+    {
+    }
+
     void push(Event&& evt)
     {
         std::unique_lock lock(mutex_);
-        notfull_.wait(lock, [this]() { return queue_.size() <= max_size; });
+        if (stoken_.stop_requested())
+        {
+            throw QueueStoppedException();
+        }
+
+        if (!notfull_.wait(lock, stoken_, [this]() { return queue_.size() < max_size; }))
+        {
+            throw QueueStoppedException();
+        }
 
         queue_.push(std::forward<Event>(evt));
         nonempty_.notify_all();
@@ -24,7 +46,11 @@ public:
     Event pop()
     {
         std::unique_lock lock(mutex_);
-        nonempty_.wait(lock, [this]() { return !queue_.empty(); });
+        if (stoken_.stop_requested())
+        {
+            throw QueueStoppedException();
+        }
+        nonempty_.wait(lock, stoken_, [this]() { return !queue_.empty(); });
 
         auto event = std::move(queue_.front());
         queue_.pop();
@@ -38,6 +64,7 @@ private:
     static constexpr std::size_t max_size = 128;
     std::queue<Event> queue_;
     std::mutex mutex_;
-    std::condition_variable_any nonempty_;
-    std::condition_variable_any notfull_;
+    std::stop_token stoken_;
+    std::condition_variable nonempty_;
+    std::condition_variable notfull_;
 };
