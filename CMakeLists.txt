@@ -39,13 +39,8 @@ target_link_libraries(${PROJECT_NAME}
 
 # Libraries
 # EventQueue
-add_library(EventQueue include/EventQueue/EventQueue.h)
-target_include_directories(EventQueue
-        PRIVATE
-        include/Button)
-target_link_libraries(EventQueue
-        PRIVATE
-        Button)
+add_library(EventQueue include/EventQueue/EventQueue.hpp)
+set_target_properties(EventQueue PROPERTIES LINKER_LANGUAGE CXX)
 
 # ButtonManager
 add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.h)
