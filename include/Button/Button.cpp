@@ -4,76 +4,45 @@
 #include "Button.h"
 
 #include <utility>
-#include "AudioController.h"
-#include "ButtonManager.h"
+#include <EventQueue.hpp>
 
+Button::~Button() noexcept
+{
+    release();
+}
 
-Button::~Button() noexcept { this->release(); };
-
-Button::Button(const uuid_t uuid, name_t name,
-               ButtonManager* button_manager,
-               AudioController* controller,
-               const std::string& path)
-    : name_(std::move(name)),
-      uuid_(uuid),
-      file_path_(path),
-      audio_controller_(controller),
-      button_manager_(button_manager)
+Button::Button(const name_type& name,
+               EventQueue<ButtonEvent>* queue)
+    : Button(name, "", queue)
 {
 };
 
-void Button::execute(const ActionType& action, const std::any& params)
+Button::Button(name_type name,
+               const std::string& path,
+               EventQueue<ButtonEvent>* queue)
+    : name_(std::move(name)),
+      id_(next_id_++),
+      file_path_(path),
+      event_queue_(queue)
 {
-    switch (action)
-    {
-    case ActionType::Play:
-        playAudio();
-        break;
-    case ActionType::Pause:
-        pauseAudio();
-        break;
-    case ActionType::Resume:
-        resumeAudio();
-        break;
-    case ActionType::Release:
-        release();
-        break;
-    case ActionType::ModifyPath:
-        modifyFilePath(std::any_cast<std::string>(params));
-        break;
-    case ActionType::ModifyName:
-        modifyName(std::any_cast<name_t>(params));
-        break;
-    }
-}
+};
 
 void Button::playAudio() const
 {
-    button_manager_->setActiveButton(uuid_);
-    audio_controller_->play(file_path_);
+    event_queue_->push({id_, ActionType::Play});
 }
 
 void Button::pauseAudio() const
 {
-    if (button_manager_->getActiveButton() == uuid_)
-    {
-        audio_controller_->pause();
-    }
+    event_queue_->push({id_, ActionType::Pause});
 }
 
 void Button::resumeAudio() const
 {
-    if (button_manager_->getActiveButton() == uuid_)
-    {
-        audio_controller_->resume();
-    }
+    event_queue_->push({id_, ActionType::Resume});
 }
 
 void Button::release() const
 {
-    if (button_manager_->getActiveButton() == uuid_)
-    {
-        button_manager_->clearActiveButton();
-        audio_controller_->stop();
-    }
+    event_queue_->push({id_, ActionType::Release});
 }

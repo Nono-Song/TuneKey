@@ -2,96 +2,119 @@
 // Created by Schizoneurax on 3/12/2025.
 //
 #pragma once
-#include <any>
 #include <string>
-#include <cstdint>
 #include <variant>
 #include <boost/filesystem.hpp>
 
-#include "AudioController.h"
-
-class AudioController;
-class ButtonManager;
+template <typename T>
+class EventQueue;
 
 class Button
 {
 public:
-    using name_t = std::string;
-    using uuid_t = uint32_t;
-    using path_t = boost::filesystem::path;
+    using name_type = std::string;
+    using identifier_type = size_t;
+    using filepath_type = boost::filesystem::path;
 
-    enum class SortKey
-    {
-        Name, UUID
-    };
-
+    /** Projector **/
     template <typename U>
-    using Proj = U(*)(const Button&);
+    using Proj = const U&(*)(const Button&);
     using ProjVariant = std::variant<
-        Proj<name_t>,
-        Proj<uuid_t>>;
+        Proj<name_type>,
+        Proj<identifier_type>,
+        Proj<filepath_type>>;
 
 
+    using SortKeyType = std::variant<identifier_type, name_type, filepath_type>;
+    /** The public method to obtain a projector given a key **/
+    template <typename Key>
+        requires std::same_as<Key, Button::name_type> ||
+        std::same_as<Key, Button::identifier_type> ||
+        std::same_as<Key, Button::filepath_type>
+    static ProjVariant Projector()
+    {
+        using U = Key;
+        if constexpr (std::is_same_v<U, name_type>)
+        {
+            return createProjector<&Button::name_>();
+        }
+        else if constexpr (std::is_same_v<U, identifier_type>)
+        {
+            return createProjector<&Button::id_>();
+        }
+        else // if (std::is_same_v<U, filepath_type>)
+        {
+            return createProjector<&Button::file_path_>();
+        }
+    }
+
+private:
+    /** Create a projector that project a button to one of its member data
+     * according to the template variable MemberPtr **/
+    template <auto MemberPtr>
+    static auto createProjector() -> ProjVariant
+    {
+        using member_type = std::invoke_result_t<decltype(MemberPtr), const Button&>;
+        return [](const Button& btn) -> member_type
+        {
+            return std::invoke(MemberPtr, btn);
+        };
+    }
+
+public:
+    /** ButtonEvent **/
     enum class ActionType
     {
-        Play, Pause, Resume, Release, ModifyPath, ModifyName
+        Play, Pause, Resume, Release
     };
 
+    struct ButtonEvent
+    {
+        identifier_type id;
+        ActionType action;
+    };
+
+    using ButtonEventType = ButtonEvent;
+
+    /** Ctor, Dtor and Copy Control **/
     Button() = delete;
 
     ~Button() noexcept;
 
-    Button(uuid_t, name_t, ButtonManager*, AudioController*, const std::string& path = "");
+    Button(const name_type&, EventQueue<ButtonEvent>* queue);
+    Button(name_type, const std::string& path, EventQueue<ButtonEvent>* queue);
 
     Button(const Button& other) = delete;
 
     Button(Button&& other) noexcept
         : name_{std::move(other.name_)},
-          uuid_{other.uuid_},
-          file_path_{std::move(other.file_path_)},
-          audio_controller_{other.audio_controller_},
-          button_manager_(other.button_manager_)
+          id_{other.id_},
+          file_path_{std::move(other.file_path_)}, event_queue_(other.event_queue_)
     {
     }
 
     Button& operator=(const Button& other) = delete;
     Button& operator=(Button&& other) = delete;
 
-    /*****************************************************
-     *                     Getter                       *
-     ****************************************************/
-    [[nodiscard]] name_t getName() const { return name_; }
+    /** Getter & Setter  **/
+    [[nodiscard]] const name_type& getName() const { return name_; }
+    [[nodiscard]] const identifier_type& getID() const { return id_; }
+    [[nodiscard]] const filepath_type& getFilePath() const { return file_path_; }
 
-    // The public method to obtain a projector given a key
-    static ProjVariant Projector(const SortKey key)
+    template <typename T>
+    void modifyFilePath(T&& arg)
     {
-        // if constexpr (key == SortKey::Name)
-        // {
-        //     return createProjector<&Button::name_>();
-        // }
-        switch (key)
-        {
-        case SortKey::Name: return createProjector<&Button::name_>();
-        case SortKey::UUID: return createProjector<&Button::uuid_>();
-        default: throw std::invalid_argument("Invalid Key");
-        }
+        release();
+        file_path_ = std::forward<T>(arg);
     }
 
-    // Execute an action with parameter
-    void execute(const ActionType&, const std::any& param = {});
+    template <typename Name>
+    void modifyName(Name&& new_name)
+    {
+        name_ = std::forward<Name>(new_name);
+    }
 
 private:
-    // Create a projector that project a button to one of its member data
-    // according to the template variable MemberPtr
-    template <auto MemberPtr>
-    static auto createProjector() -> ProjVariant
-    {
-        return [](const Button& btn)
-        {
-            return btn.*MemberPtr;
-        };
-    }
-
     /*------------------Operations--------------------------*/
     // Play the audio file if file path is valid. Interface with AudioController
     // Update last_used_time
@@ -104,25 +127,12 @@ private:
     // Stop and release the resources (file). Interface to FileController
     void release() const;
 
-    // Modify the file path. Need to first release any hold resources
-    template <typename T>
-    void modifyFilePath(T&& arg)
-    {
-        file_path_ = std::forward<T>(arg);
-    }
-
-    // Use one single template function to do perfect forwarding
-    template <typename Name>
-    void modifyName(Name&& new_name)
-    {
-        name_ = std::forward<Name>(new_name);
-    }
+    inline static std::atomic<size_t> next_id_{0};
 
     // Todo: Time of creation
     // Todo: Time of last usage
-    name_t name_;
-    const uuid_t uuid_;
-    path_t file_path_;
-    AudioController* const audio_controller_;
-    ButtonManager* const button_manager_;
+    name_type name_;
+    const identifier_type id_;
+    filepath_type file_path_;
+    EventQueue<ButtonEventType>* event_queue_;
 };

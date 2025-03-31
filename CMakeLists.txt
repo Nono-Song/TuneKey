@@ -35,13 +35,14 @@ find_package(Boost CONFIG REQUIRED COMPONENTS filesystem system)
 # Main executable
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE
-        include/ButtonManager
-        include/AudioController
+        include/Button
+        include/EventQueue
 )
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
-        ButtonManager
-        AudioController
+        Button
+        EventQueue
+        SDL3::SDL3
         fmt::fmt
 )
 
@@ -67,12 +68,10 @@ target_link_libraries(ButtonManager
 add_library(Button include/Button/Button.cpp include/Button/Button.h)
 target_include_directories(Button
         PRIVATE
-        include/ButtonManager
-        include/AudioController)
+        include/EventQueue)
 target_link_libraries(Button
         PRIVATE
-        ButtonManager
-        AudioController
+        EventQueue
         PRIVATE
         Boost::filesystem
         Boost::system)
