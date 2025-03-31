@@ -25,6 +25,11 @@ int main()
             bm[id].execute(Button::ActionType::Release);
         }
 
+        if (input == "shutdown")
+        {
+            controller.shutdown();
+        }
+
         if (input == "play")
         {
             bm[id].execute(Button::ActionType::Play, "path1");

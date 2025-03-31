@@ -4,147 +4,147 @@
 
 #include "AudioController.h"
 #include <chrono>
-#include <fmt/core.h>
-#include <fmt/chrono.h>
+#include <fmt/base.h>
 
 using namespace std::literals::chrono_literals;
 
-AudioController::AudioController() : remaining_time_(10)
-{
-}
-
-AudioController::~AudioController()
-{
-    shutdown();
-}
+AudioController::AudioController() = default;
+AudioController::~AudioController() = default;
 
 void AudioController::start()
 {
+    curr_state_ = State::Idle; // Assume only a single thread is running right not
     state_machine_thread_ = std::jthread{std::bind_front(&AudioController::stateMachineLoop, this)};
 }
 
-void AudioController::shutdown()
+void AudioController::shutdown() const
 {
-    audio_thread_.request_stop();
-    state_machine_thread_.request_stop();
-    atomic_setter<&AudioController::curr_state_>(State::Idle);
-    state_machine_condition_.notify_all();
+    push_command<ShutdownCmd>();
 }
 
-void AudioController::play(boost::filesystem::path path)
+void AudioController::play(const boost::filesystem::path& path) const
 {
-    stop();
-    {
-        std::unique_lock lock(state_machine_mutex_);
-        curr_audio_path_ = std::move(path);
-        remaining_time_.store(10);
-        curr_state_ = State::Play;
-    }
-    state_machine_condition_.notify_one();
-    std::this_thread::sleep_for(20ms);
+    push_command<PlayCmd>(path);
 }
 
-void AudioController::pause()
+void AudioController::pause() const
 {
-    {
-        std::unique_lock lock(state_machine_mutex_);
-        if (curr_state_ == State::Play)
-        {
-            curr_state_ = State::Pause;
-        }
-    }
-    state_machine_condition_.notify_one();
-    std::this_thread::sleep_for(20ms);
+    push_command<PauseCmd>();
 }
 
-void AudioController::resume()
+void AudioController::resume() const
 {
-    {
-        std::unique_lock lock(state_machine_mutex_);
-        if (curr_state_ == State::Pause)
-        {
-            curr_state_ = State::Play;
-        }
-    }
-    state_machine_condition_.notify_one();
-    std::this_thread::sleep_for(20ms);
+    push_command<ResumeCmd>();
 }
 
-void AudioController::stop()
+void AudioController::stop() const
 {
-    atomic_setter<&AudioController::curr_state_>(State::Idle);
-    state_machine_condition_.notify_one();
-    std::this_thread::sleep_for(20ms);
+    push_command<StopCmd>();
 }
 
 
 void AudioController::playAudio(const std::stop_token& stoken)
 {
-    if (atomic_getter<&AudioController::curr_state_>() != State::Play)
-    {
-        return;
-    }
-
-    // Todo: Need to Update metadata for the audio
-    auto filepath = atomic_getter<&AudioController::curr_audio_path_>();
-
+    std::unique_lock lock(audio_mutex_);
     // Play the audio and wait for possible pause or new play request
-    while (!stoken.stop_requested() &&
-        remaining_time_.load() > 0 &&
-        atomic_getter<&AudioController::curr_state_>() == State::Play)
+    const auto duration = duration_.load();
+    for (auto i = 0; i < duration; ++i)
     {
+        if (audio_paused_.load())
+        {
+            std::puts("Audio Paused\n");
+            audio_condition_.wait(lock, stoken, [this]() { return !audio_paused_.load(); });
+        }
+
+        if (stoken.stop_requested())
+        {
+            std::puts("Audio Interrupted\n");
+            return;
+        }
+
         std::this_thread::sleep_for(1s);
-        remaining_time_.fetch_sub(1);
-        fmt::print("Remaining time: {}s\n", remaining_time_.load());
+        fmt::print("Audio Playing... {}s\n", i + 1);
     }
 
-    if (remaining_time_.load() > 0)
-    {
-        std::puts("Audio interrupted\n");
-    }
-    else
-    {
-        std::puts("Audio finished\n");
-        atomic_setter<&AudioController::curr_state_>(State::Idle);
-        state_machine_condition_.notify_one();
-    }
+    std::puts("Audio finished\n");
 }
 
 
 void AudioController::stateMachineLoop(const std::stop_token& stoken)
 {
+    std::stop_callback cb(stoken, [this]()
+    {
+        if (audio_thread_.get_stop_source().stop_possible())
+        {
+            audio_thread_.request_stop();
+            audio_thread_.join();
+        }
+    });
+
+    event_queue_ = std::make_unique<EventQueue<Command>>(stoken);
+
     while (!stoken.stop_requested())
     {
-        // Will this mutex be destroyed and recreated in each iteration?
-        std::shared_lock lock(state_machine_mutex_);
-        switch (curr_state_)
+        try
         {
-        case State::Idle:
-            state_machine_condition_.wait(lock, stoken, [this]() { return curr_state_ == State::Play; });
-            break;
-        case State::Play:
-            // Play audio until it ends or interrupted by pause or new play request
-            // Update metadata for the audio
-
-            audio_thread_ = std::jthread(std::bind_front(&AudioController::playAudio, this));
-            state_machine_condition_.wait(lock, stoken, [this]()
-                                          {
-                                              return curr_state_ != State::Play;
-                                          }
-            );
-
-            if (audio_thread_.get_stop_token().stop_possible())
+            std::visit([this]<typename T>(const T& arg)
             {
-                audio_thread_.request_stop();
-            }
+                std::unique_lock lock(state_machine_mutex_);
+                using U = std::decay_t<T>;
+                if constexpr (std::is_same_v<T, PlayCmd>)
+                {
+                    if (curr_state_ != State::Idle)
+                    {
+                        audio_thread_.request_stop();
+                        audio_thread_.join();
+                    }
 
-            break;
-        case State::Pause:
-            state_machine_condition_.wait(lock, stoken, [this]()
-            {
-                return curr_state_ != State::Pause;
-            });
+                    curr_state_ = State::Play;
+                    curr_audio_path_ = arg.path;
+                    audio_thread_ = std::jthread{std::bind_front(&AudioController::playAudio, this)};
+                }
+                else if constexpr (std::is_same_v<U, ShutdownCmd>)
+                {
+                    if (curr_state_ != State::Offline)
+                    {
+                        curr_state_ = State::Offline;
+                        state_machine_thread_.request_stop();
+                    }
+                }
+                else if constexpr (std::is_same_v<U, PauseCmd>)
+                {
+                    if (curr_state_ == State::Play)
+                    {
+                        curr_state_ = State::Pause;
+                        audio_paused_.store(true);
+                    }
+                }
+                else if constexpr (std::is_same_v<U, ResumeCmd>)
+                {
+                    if (curr_state_ == State::Pause)
+                    {
+                        curr_state_ = State::Play;
+                        audio_paused_.store(false);
+                        audio_condition_.notify_one();
+                    }
+                }
+                // if constexpr (std::is_same_v<U, StopCmd>)
+                else
+                {
+                    if (curr_state_ != State::Offline && curr_state_ != State::Idle)
+                    {
+                        curr_state_ = State::Idle;
+                        audio_thread_.request_stop();
+                        audio_thread_.join();
+                    }
+                }
+            }, pop_command());
+        }
+        catch (...)
+        {
             break;
         }
     }
+
+    event_queue_.reset();
 }
