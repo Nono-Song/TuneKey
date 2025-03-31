@@ -22,8 +22,39 @@ template <typename Event>
 class EventQueue
 {
 public:
-    explicit EventQueue(std::stop_token stoken): stoken_(std::move(stoken))
+    explicit EventQueue(const std::stop_token& stoken): stoken_(stoken)
     {
+    }
+
+    void push(std::initializer_list<Event> events)
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (stoken_.stop_requested())
+        {
+            throw QueueStoppedException();
+        }
+
+        if (!notfull_.wait(lock, stoken_, [this, &events]()
+        {
+            return queue_.size() < max_size;
+        }))
+        {
+            throw QueueStoppedException();
+        }
+
+        for (auto&& evt : events)
+        {
+            if (queue_.size() < max_size)
+            {
+                queue_.push(evt);
+            }
+            else if (!notfull_.wait(lock, stoken_, [this, &events]() { return queue_.size() < max_size; }))
+            {
+                throw QueueStoppedException();
+            }
+        }
+
+        nonempty_.notify_all();
     }
 
     void push(Event&& evt)
@@ -50,7 +81,10 @@ public:
         {
             throw QueueStoppedException();
         }
-        nonempty_.wait(lock, stoken_, [this]() { return !queue_.empty(); });
+        if (!nonempty_.wait(lock, stoken_, [this]() { return !queue_.empty(); }))
+        {
+            throw QueueStoppedException();
+        }
 
         auto event = std::move(queue_.front());
         queue_.pop();
@@ -65,6 +99,6 @@ private:
     std::queue<Event> queue_;
     std::mutex mutex_;
     std::stop_token stoken_;
-    std::condition_variable nonempty_;
-    std::condition_variable notfull_;
+    std::condition_variable_any nonempty_;
+    std::condition_variable_any notfull_;
 };
