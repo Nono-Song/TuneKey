@@ -23,6 +23,11 @@ int main()
             controller.stop();
         }
 
+        if (input == "shutdown")
+        {
+            controller.shutdown();
+        }
+
         if (input == "play")
         {
             controller.play("");

@@ -36,40 +36,44 @@ find_package(Boost CONFIG REQUIRED COMPONENTS filesystem system)
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE
         include/ButtonManager
+        include/AudioController
 )
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
         ButtonManager
+        AudioController
         fmt::fmt
 )
 
 # Libraries
 # EventQueue
-add_library(EventQueue include/EventQueue/EventQueue.hpp)
-set_target_properties(EventQueue PROPERTIES LINKER_LANGUAGE CXX)
+add_library(EventQueue INTERFACE)
+target_include_directories(EventQueue INTERFACE include/EventQueue)
 
 # ButtonManager
 add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.h)
 target_include_directories(ButtonManager
-        PUBLIC
+        PRIVATE
         include/Button
         include/AudioController)
 target_link_libraries(ButtonManager
         PRIVATE
         Button
-        AudioController)
+        AudioController
+        Boost::filesystem
+        Boost::system)
 
 # Button
 add_library(Button include/Button/Button.cpp include/Button/Button.h)
 target_include_directories(Button
-        PUBLIC
+        PRIVATE
         include/ButtonManager
         include/AudioController)
 target_link_libraries(Button
         PRIVATE
         ButtonManager
         AudioController
-        PUBLIC
+        PRIVATE
         Boost::filesystem
         Boost::system)
 
@@ -77,6 +81,8 @@ target_link_libraries(Button
 add_library(AudioController include/AudioController/AudioController.cpp include/AudioController/AudioController.h)
 target_link_libraries(AudioController
         PUBLIC
+        EventQueue
+        PRIVATE
         fmt::fmt
         Boost::filesystem
         Boost::system
