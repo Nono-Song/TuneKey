@@ -9,6 +9,7 @@
 #include <shared_mutex>
 #include <condition_variable>
 #include <boost/filesystem.hpp>
+#include <utility>
 #include <variant>
 #include "EventQueue.hpp"
 
@@ -39,13 +40,11 @@ private:
     {
         PlayCmd() = default;
 
-        explicit PlayCmd(const boost::filesystem::path& path): path(path)
+        explicit PlayCmd(boost::filesystem::path path): path(std::move(path))
         {
         }
 
-        PlayCmd(const PlayCmd& other): path(other.path)
-        {
-        }
+        PlayCmd(const PlayCmd& other) = default;
 
         PlayCmd(PlayCmd&& other) noexcept: path(std::move(other.path))
         {
