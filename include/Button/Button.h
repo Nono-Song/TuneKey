@@ -5,9 +5,7 @@
 #include <any>
 #include <string>
 #include <cstdint>
-#include <functional>
 #include <variant>
-
 #include <boost/filesystem.hpp>
 
 #include "AudioController.h"
@@ -28,7 +26,7 @@ public:
     };
 
     template <typename U>
-    using Proj = std::function<U(const Button&)>;
+    using Proj = U(*)(const Button&);
     using ProjVariant = std::variant<
         Proj<name_t>,
         Proj<uuid_t>>;
