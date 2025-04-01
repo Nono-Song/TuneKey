@@ -1,4 +1,3 @@
-#include <iostream>
 
 #include <string>
 #include <SDL3/SDL.h>
@@ -25,9 +24,26 @@ void test_projector(const Button& button, const Button::ProjVariant& v)
     }, v);
 }
 
+template <typename Test>
+void test_event(const Button::event_type& v)
+{
+    std::visit([]<typename T>(T&&)
+    {
+        using U = std::decay_t<T>;
+        if constexpr (std::is_same_v<U, Test>)
+        {
+            assert(true);
+        }
+        else
+        {
+            assert(false);
+        }
+    }, v);
+}
+
 void worker(const std::stop_token& stoken)
 {
-    EventQueue<Button::ButtonEvent> event_queue(stoken);
+    Button::event_queue event_queue(stoken);
     Button button("test1", &event_queue);
 
     assert(button.getID() == 0);
@@ -43,6 +59,17 @@ void worker(const std::stop_token& stoken)
     test_projector(button, Button::Projector<Button::identifier_type>());
     test_projector(button, Button::Projector<Button::name_type>());
     test_projector(button, Button::Projector<Button::filepath_type>());
+
+    button.handleEvent<Button::PlayEvent>();
+    test_event<Button::PlayEvent>(event_queue.pop());
+    button.handleEvent<Button::PlayEvent>();
+    button.handleEvent<Button::PauseEvent>();
+    test_event<Button::PlayEvent>(event_queue.pop());
+    test_event<Button::PauseEvent>(event_queue.pop());
+    button.handleEvent<Button::PlayEvent>();
+    button.handleEvent<Button::ResumeEvent>();
+    test_event<Button::PlayEvent>(event_queue.pop());
+    test_event<Button::ResumeEvent>(event_queue.pop());
 }
 
 int main()

@@ -6,20 +6,17 @@
 #include <utility>
 #include <EventQueue.hpp>
 
-Button::~Button() noexcept
-{
-    release();
-}
+Button::~Button() noexcept = default;
 
 Button::Button(const name_type& name,
-               EventQueue<ButtonEvent>* queue)
+               EventQueue<event_type>* queue)
     : Button(name, "", queue)
 {
 };
 
 Button::Button(name_type name,
                const std::string& path,
-               EventQueue<ButtonEvent>* queue)
+               EventQueue<event_type>* queue)
     : name_(std::move(name)),
       id_(next_id_++),
       file_path_(path),
@@ -27,22 +24,10 @@ Button::Button(name_type name,
 {
 };
 
-void Button::playAudio() const
+Button::Button(Button&& other) noexcept
+    : name_{std::move(other.name_)},
+      id_{other.id_},
+      file_path_{std::move(other.file_path_)},
+      event_queue_(other.event_queue_)
 {
-    event_queue_->push({id_, ActionType::Play});
-}
-
-void Button::pauseAudio() const
-{
-    event_queue_->push({id_, ActionType::Pause});
-}
-
-void Button::resumeAudio() const
-{
-    event_queue_->push({id_, ActionType::Resume});
-}
-
-void Button::release() const
-{
-    event_queue_->push({id_, ActionType::Release});
 }

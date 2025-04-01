@@ -2,6 +2,7 @@
 // Created by Schizoneurax on 3/12/2025.
 //
 #pragma once
+#include <EventQueue.hpp>
 #include <string>
 #include <variant>
 #include <boost/filesystem.hpp>
@@ -15,6 +16,41 @@ public:
     using name_type = std::string;
     using identifier_type = size_t;
     using filepath_type = boost::filesystem::path;
+    struct PlayEvent;
+    struct ResumeEvent;
+    struct PauseEvent;
+    using event_type = std::variant<PlayEvent,
+                                    PauseEvent,
+                                    ResumeEvent>;
+
+    using event_queue = EventQueue<event_type>;
+
+    struct PlayEvent
+    {
+        identifier_type id;
+        filepath_type filepath;
+    };
+
+    struct PauseEvent
+    {
+        identifier_type id;
+    };
+
+    struct ResumeEvent
+    {
+        identifier_type id;
+    };
+
+    /** Ctor, Dtor and Copy Control **/
+    Button(const name_type&, EventQueue<event_type>* queue);
+    Button(name_type, const std::string& path, EventQueue<event_type>* queue);
+    Button(Button&& other) noexcept;
+    ~Button() noexcept;
+
+    Button() = delete;
+    Button(const Button& other) = delete;
+    Button& operator=(const Button& other) = delete;
+    Button& operator=(Button&& other) = delete;
 
     /** Projector **/
     template <typename U>
@@ -24,9 +60,7 @@ public:
         Proj<identifier_type>,
         Proj<filepath_type>>;
 
-
-    using SortKeyType = std::variant<identifier_type, name_type, filepath_type>;
-    /** The public method to obtain a projector given a key **/
+    // The public method to obtain a projector given a key
     template <typename Key>
         requires std::same_as<Key, Button::name_type> ||
         std::same_as<Key, Button::identifier_type> ||
@@ -62,77 +96,52 @@ private:
     }
 
 public:
-    /** ButtonEvent **/
-    enum class ActionType
-    {
-        Play, Pause, Resume, Release
-    };
-
-    struct ButtonEvent
-    {
-        identifier_type id;
-        ActionType action;
-    };
-
-    using ButtonEventType = ButtonEvent;
-
-    /** Ctor, Dtor and Copy Control **/
-    Button() = delete;
-
-    ~Button() noexcept;
-
-    Button(const name_type&, EventQueue<ButtonEvent>* queue);
-    Button(name_type, const std::string& path, EventQueue<ButtonEvent>* queue);
-
-    Button(const Button& other) = delete;
-
-    Button(Button&& other) noexcept
-        : name_{std::move(other.name_)},
-          id_{other.id_},
-          file_path_{std::move(other.file_path_)}, event_queue_(other.event_queue_)
-    {
-    }
-
-    Button& operator=(const Button& other) = delete;
-    Button& operator=(Button&& other) = delete;
-
     /** Getter & Setter  **/
     [[nodiscard]] const name_type& getName() const { return name_; }
     [[nodiscard]] const identifier_type& getID() const { return id_; }
     [[nodiscard]] const filepath_type& getFilePath() const { return file_path_; }
 
     template <typename T>
+        requires std::is_convertible_v<T, filepath_type>
     void modifyFilePath(T&& arg)
     {
-        release();
         file_path_ = std::forward<T>(arg);
     }
 
     template <typename Name>
+        requires std::is_convertible_v<Name, name_type>
     void modifyName(Name&& new_name)
     {
         name_ = std::forward<Name>(new_name);
     }
 
-private:
     /*------------------Operations--------------------------*/
-    // Play the audio file if file path is valid. Interface with AudioController
-    // Update last_used_time
-    void playAudio() const;
+    template <typename Evt>
+        requires std::is_same_v<Evt, PlayEvent> ||
+        std::is_same_v<Evt, PauseEvent> ||
+        std::is_same_v<Evt, ResumeEvent>
+    void handleEvent() const
+    {
+        if constexpr (std::is_same_v<Evt, PlayEvent>)
+        {
+            event_queue_->push(Evt{id_, file_path_});
+        }
+        else if constexpr (std::is_same_v<Evt, PauseEvent>)
+        {
+            event_queue_->push(Evt{id_});
+        }
+        else // if constexpr (std::is_same_v<Evt, ResumeEvent>)
+        {
+            event_queue_->push(Evt{id_});
+        }
+    }
 
-    // Pause the audio without releasing the resources. Only release the resources after a timeout
-    void pauseAudio() const;
-    void resumeAudio() const;
-
-    // Stop and release the resources (file). Interface to FileController
-    void release() const;
-
+private:
     inline static std::atomic<size_t> next_id_{0};
-
     // Todo: Time of creation
     // Todo: Time of last usage
     name_type name_;
     const identifier_type id_;
     filepath_type file_path_;
-    EventQueue<ButtonEventType>* event_queue_;
+    event_queue* event_queue_;
 };
