@@ -36,11 +36,14 @@ find_package(Boost CONFIG REQUIRED COMPONENTS filesystem system)
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE
         include/Button
+        include/ButtonManager
         include/EventQueue
+        include/AudioController
 )
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
         Button
+        ButtonManager
         EventQueue
         SDL3::SDL3
         fmt::fmt
