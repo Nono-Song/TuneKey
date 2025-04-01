@@ -42,8 +42,8 @@ public:
     };
 
     /** Ctor, Dtor and Copy Control **/
-    Button(const name_type&, EventQueue<event_type>* queue);
-    Button(name_type, const std::string& path, EventQueue<event_type>* queue);
+    Button(const name_type&, const identifier_type& id, EventQueue<event_type>* queue);
+    Button(name_type, const identifier_type& id, const std::string& path, EventQueue<event_type>* queue);
     Button(Button&& other) noexcept;
     ~Button() noexcept;
 
@@ -101,18 +101,30 @@ public:
     [[nodiscard]] const identifier_type& getID() const { return id_; }
     [[nodiscard]] const filepath_type& getFilePath() const { return file_path_; }
 
-    template <typename T>
-        requires std::is_convertible_v<T, filepath_type>
-    void modifyFilePath(T&& arg)
+    template <typename Attr, typename T>
+        requires std::is_convertible_v<Attr, filepath_type> ||
+        std::is_convertible_v<Attr, name_type>
+    void modify_attribute(T&& arg)
     {
-        file_path_ = std::forward<T>(arg);
+        using U = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<U, name_type>)
+        {
+            name_ = std::forward<T>(arg);
+        }
+        else // if constexpr (std::is_same_v<U, filepath_type>)
+        {
+            file_path_ = std::forward<T>(arg);
+        }
     }
 
-    template <typename Name>
-        requires std::is_convertible_v<Name, name_type>
-    void modifyName(Name&& new_name)
+    void modify_name(const name_type& arg)
     {
-        name_ = std::forward<Name>(new_name);
+        modify_attribute<Button::name_type>(arg);
+    }
+
+    void modify_filepath(const filepath_type& arg)
+    {
+        modify_attribute<Button::filepath_type>(arg);
     }
 
     /*------------------Operations--------------------------*/
@@ -137,7 +149,6 @@ public:
     }
 
 private:
-    inline static std::atomic<size_t> next_id_{0};
     // Todo: Time of creation
     // Todo: Time of last usage
     name_type name_;

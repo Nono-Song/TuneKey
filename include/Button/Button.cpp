@@ -9,16 +9,18 @@
 Button::~Button() noexcept = default;
 
 Button::Button(const name_type& name,
+               const identifier_type& id,
                EventQueue<event_type>* queue)
-    : Button(name, "", queue)
+    : Button(name, id, "", queue)
 {
 };
 
 Button::Button(name_type name,
+               const identifier_type& id,
                const std::string& path,
                EventQueue<event_type>* queue)
     : name_(std::move(name)),
-      id_(next_id_++),
+      id_(id),
       file_path_(path),
       event_queue_(queue)
 {
