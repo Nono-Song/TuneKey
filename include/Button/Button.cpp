@@ -17,11 +17,11 @@ Button::Button(const name_type& name,
 
 Button::Button(name_type name,
                const identifier_type& id,
-               const std::string& path,
+               filepath_type path,
                EventQueue<event_type>* queue)
     : name_(std::move(name)),
       id_(id),
-      file_path_(path),
+      file_path_(std::move(path)),
       event_queue_(queue)
 {
 };

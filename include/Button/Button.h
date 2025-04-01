@@ -50,7 +50,7 @@ public:
 
     /** Ctor, Dtor and Copy Control **/
     Button(const name_type&, const identifier_type& id, EventQueue<event_type>* queue);
-    Button(name_type, const identifier_type& id, const std::string& path, EventQueue<event_type>* queue);
+    Button(name_type, const identifier_type& id, filepath_type path, EventQueue<event_type>* queue);
     Button(Button&& other) noexcept;
     ~Button() noexcept;
 
@@ -88,6 +88,9 @@ public:
     [[nodiscard]] const filepath_type& getFilePath() const { return file_path_; }
     void modify_name(const name_type& arg);
     void modify_filepath(const filepath_type& arg);
+    template <typename Attr, typename T>
+        requires std::is_convertible_v<Attr, Button::filepath_type> || std::is_convertible_v<Attr, Button::name_type>
+    void modify_attribute(T&& arg);
 
     template <typename Evt>
         requires std::is_same_v<Evt, Button::PlayEvent> ||
@@ -97,10 +100,6 @@ public:
     void handleEvent() const;
 
 private:
-    template <typename Attr, typename T>
-        requires std::is_convertible_v<Attr, Button::filepath_type> || std::is_convertible_v<Attr, Button::name_type>
-    void modify_attribute(T&& arg);
-
     // Todo: Time of creation
     // Todo: Time of last usage
     name_type name_;
