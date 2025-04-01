@@ -3,7 +3,6 @@
 #include <SDL3/SDL.h>
 #include <Button.h>
 #include <EventQueue.hpp>
-#include <future>
 
 void test_projector(const Button& button, const Button::ProjVariant& v)
 {

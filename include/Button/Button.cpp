@@ -33,3 +33,13 @@ Button::Button(Button&& other) noexcept
       event_queue_(other.event_queue_)
 {
 }
+
+void Button::modify_name(const name_type& arg)
+{
+    modify_attribute<Button::name_type>(arg);
+}
+
+void Button::modify_filepath(const filepath_type& arg)
+{
+    modify_attribute<Button::filepath_type>(arg);
+}
