@@ -5,7 +5,6 @@
 #ifndef AUDIOCONTROLLER_H
 #define AUDIOCONTROLLER_H
 #include <thread>
-#include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
 #include <boost/filesystem.hpp>
@@ -24,50 +23,28 @@ public:
     AudioController& operator=(AudioController&&) = delete;
 
     void start();
-    void shutdown() const;
+    void shutdown();
 
     // Change state
-    void play(const boost::filesystem::path& path) const;
-    void pause() const;
-    void resume() const;
-    void stop() const;
+    void play(const boost::filesystem::path& path);
+    void pause();
+    void resume();
+    void stop();
 
-    void stateMachineLoop(const std::stop_token& stoken);
+    void stateMachineLoop(const std::stop_token& stoken) noexcept;
 
 private:
+    // @formatter:off
     /** Command **/
     struct PlayCmd
     {
-        PlayCmd() = default;
-
-        explicit PlayCmd(boost::filesystem::path path): path(std::move(path))
-        {
-        }
-
-        PlayCmd(const PlayCmd& other) = default;
-
-        PlayCmd(PlayCmd&& other) noexcept: path(std::move(other.path))
-        {
-        }
-
+        explicit PlayCmd(boost::filesystem::path path): path(std::move(path)) {}
         boost::filesystem::path path;
     };
-
-    struct PauseCmd
-    {
-    };
-
-    struct ResumeCmd
-    {
-    };
-
-    struct StopCmd
-    {
-    };
-
-    struct ShutdownCmd
-    {
-    };
+    struct PauseCmd{};
+    struct ResumeCmd{};
+    struct StopCmd{};
+    struct ShutdownCmd{};
 
     using Command = std::variant<PlayCmd,
                                  PauseCmd,
@@ -75,39 +52,61 @@ private:
                                  StopCmd,
                                  ShutdownCmd>;
 
+    // @formatter:on
     template <typename Cmd, typename... Args>
-    void push_command(Args&&... args) const
+    void push_command(Args&&... args)
     {
-        event_queue_->push(Cmd(std::forward<Args>(args)...));
+        if (event_queue_)
+        {
+            return event_queue_->push(Cmd(std::forward<Args>(args)...));
+        }
+        throw QueueStoppedException{};
     }
 
-    auto pop_command() const
+    Command pop_command()
     {
-        return event_queue_->pop();
+        try
+        {
+            if (event_queue_)
+            {
+                return event_queue_->pop();
+            }
+        }
+        catch (const QueueStoppedException&)
+        {
+            if (curr_state_ != State::Offline)
+            {
+                throw std::runtime_error{"EventQueue stopped unexpectedly"};
+            }
+        }
+
+        return ShutdownCmd{};
     }
 
     /** State **/
-    enum class State
-    {
-        Offline, Idle, Play, Pause
-    };
+    enum class State { Offline, Idle, Play, Pause };
 
-    // To SDL2?
     void playAudio(const std::stop_token& stoken);
-    // Todo: void pauseAudio() const;
-    // Todo: void resumeAudio() const;
+
+    void reset_playback() noexcept;
+    void play_callback(const PlayCmd& play_cmd);
+    void pause_callback(const PauseCmd& pause_cmd);
+    void resume_callback(const ResumeCmd& resume_cmd);
+    void stop_callback(const StopCmd& stop_cmd);
+    void shutdown_callback(const ShutdownCmd& shutdown_cmd);
+
+    static constexpr int default_duration{10};
 
     /** Synchronization **/
     std::jthread state_machine_thread_;
     std::jthread audio_thread_;
-    mutable std::mutex audio_mutex_;
     mutable std::shared_mutex state_machine_mutex_;
     std::condition_variable_any audio_condition_;
 
     /** Shared Data **/
+    std::atomic_int duration_{default_duration};
+    std::atomic_bool audio_waiting_{false};
     State curr_state_{State::Offline};
-    std::atomic_int duration_{10};
-    std::atomic_bool audio_paused_{false};
     boost::filesystem::path curr_audio_path_{};
     std::unique_ptr<EventQueue<Command>> event_queue_{};
 };
