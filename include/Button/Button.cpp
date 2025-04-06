@@ -2,49 +2,44 @@
 // Created by Schizoneurax on 3/11/2025.
 //
 #include "Button.h"
-#include <stdexcept>
 
+#include <utility>
+#include <EventQueue.hpp>
 
-Button::~Button() noexcept { this->release(); };
+Button::~Button() noexcept = default;
 
-Button::Button(uuid_t uuid, name_t name, std::string path)
-    : name_(std::move(name)), uuid_(uuid), file_path_(std::move(path)) {
+Button::Button(const name_type& name,
+               const identifier_type& id,
+               EventQueue<event_type>* queue)
+    : Button(name, id, "", queue)
+{
 };
 
-void Button::execute(const ActionType &action, const std::any &params) {
-    switch (action) {
-        case ActionType::Play:
-            playAudio();
-            break;
-        case ActionType::Pause:
-            pauseAudio();
-            break;
-        case ActionType::Release:
-            release();
-            break;
-        case ActionType::ModifyPath:
-            modifyFilePath(std::any_cast<std::string>(params));
-            break;
-        case ActionType::ModifyName:
-            modifyName(std::any_cast<name_t>(params));
-            break;
-    }
+Button::Button(name_type name,
+               const identifier_type& id,
+               filepath_type path,
+               EventQueue<event_type>* queue)
+    : name_(std::move(name)),
+      id_(id),
+      file_path_(std::move(path)),
+      event_queue_(queue)
+{
+};
+
+Button::Button(Button&& other) noexcept
+    : name_{std::move(other.name_)},
+      id_{other.id_},
+      file_path_{std::move(other.file_path_)},
+      event_queue_(other.event_queue_)
+{
 }
 
-void Button::playAudio() const {
-    throw std::logic_error("Not implemented");
+void Button::modify_name(const name_type& arg)
+{
+    modify_attribute<Button::name_type>(arg);
 }
 
-void Button::pauseAudio() const {
-    throw std::logic_error("Not implemented");
-}
-
-void Button::release() {
-    // TODO: Button::release()
-}
-
-void Button::modifyFilePath(std::string &&path) {
-    this->release();
-    file_path_ = path;
-    throw std::logic_error("Not implemented");
+void Button::modify_filepath(const filepath_type& arg)
+{
+    modify_attribute<Button::filepath_type>(arg);
 }
