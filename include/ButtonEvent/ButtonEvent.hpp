@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <string>
-#include <variant>
 #include <boost/filesystem.hpp>
 
 using identifier_type = uint64_t;
@@ -44,7 +43,3 @@ struct StopEvent
 };
 
 struct ShutdownEvent {};
-
-using ButtonEvent = std::variant<PlayEvent,
-                                 PauseEvent, ResumeEvent,
-                                 StopEvent, ShutdownEvent>;
