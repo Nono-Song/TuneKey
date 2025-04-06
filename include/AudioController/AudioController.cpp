@@ -42,7 +42,7 @@ void AudioController::start()
             catch (std::exception& e)
             {
                 fmt::print("playAudioLoop: {}\n", e.what());
-                shutdown();
+                // Todo: exception handling
             }
         });
 
@@ -90,21 +90,18 @@ void AudioController::stop()
 
 void AudioController::playAudio(const std::stop_token& stoken)
 {
+    uint64_t playback_id = 0;
     while (!stoken.stop_requested())
     {
         std::shared_lock lock(state_machine_mutex_);
-
-        audio_waiting_.store(true, std::memory_order_release);
-        audio_condition_.notify_one();
         audio_condition_.wait(lock, stoken, [this]()
         {
             return curr_state_ == State::Play;
         });
-        audio_waiting_.store(false, std::memory_order_release);
-
         if (stoken.stop_requested()) { break; }
 
         const auto audio_path = curr_audio_path_;
+        playback_id = curr_playback_id_.load(std::memory_order_acquire);
 
         constexpr unsigned interval = 50;
         constexpr auto ratio = 1000 / interval;
@@ -114,20 +111,28 @@ void AudioController::playAudio(const std::stop_token& stoken)
 
 
         // Simulate audio playback
-        for (unsigned i = 0; i <= duration; i++)
+        for (unsigned i = 0; i < duration; i++)
         {
+            // Play a new audio if playback id changes
+            if (playback_id != curr_playback_id_.load(std::memory_order_acquire))
+            {
+                fmt::print("AudioThread: playback id {} superseded by {}\n",
+                           playback_id, curr_playback_id_.load(std::memory_order_acquire));
+                break;
+            }
+
             std::this_thread::sleep_for(std::chrono::milliseconds(interval));
             if (i % ratio == 0)
             {
                 fmt::print("Audio playing... {}s\n", i / ratio + 1);
             }
 
-            if (std::shared_lock l(state_machine_mutex_);
+            if (std::shared_lock pause_lock(state_machine_mutex_);
                 curr_state_ == State::Pause)
             {
                 fmt::print("Audio paused...\n");
 
-                audio_condition_.wait(l, stoken, [this]()
+                audio_condition_.wait(pause_lock, stoken, [this]()
                 {
                     return curr_state_ != State::Pause;
                 });
@@ -138,51 +143,41 @@ void AudioController::playAudio(const std::stop_token& stoken)
                 }
             }
 
-            if (std::shared_lock l(state_machine_mutex_);
+            if (std::shared_lock stop_lock(state_machine_mutex_);
                 curr_state_ == State::Idle || stoken.stop_requested())
             {
                 break;
             }
         }
 
-        if (std::scoped_lock l(state_machine_mutex_);
+        if (std::shared_lock state_lock(state_machine_mutex_);
             curr_state_ == State::Idle || stoken.stop_requested())
         {
             fmt::print("Audio interrupted...\n");
         }
-        else
+        else if (playback_id == curr_playback_id_.load(std::memory_order_acquire))
         {
             fmt::print("Audio finished naturally\n");
-            curr_state_ = State::Idle;
+            push_command<StopCmd>();
         }
     }
 }
 
-void AudioController::reset_playback() noexcept
+void AudioController::reset_playback()
 {
     // Reset all playback metadata for a new playback
     curr_state_ = State::Idle;
     curr_audio_path_ = "";
-    audio_waiting_.store(false, std::memory_order_release);
-    duration_.store(default_duration, std::memory_order_release);
+    duration_ = default_duration;
 }
 
 void AudioController::play_callback(const PlayCmd& play_cmd)
 {
     {
-        std::unique_lock lock(state_machine_mutex_);
-        if (curr_state_ != State::Idle)
-        {
-            reset_playback();
-            audio_condition_.notify_one();
-            audio_condition_.wait(lock, [this]()
-            {
-                return audio_waiting_.load(std::memory_order_acquire);
-            });
-            fmt::print("Playing new audio...\n");
-        }
-
-        // Set new playback information
+        std::scoped_lock lock(state_machine_mutex_);
+        reset_playback();
+        fmt::print("Playing new audio...\n");
+        ++curr_playback_id_;
         curr_state_ = State::Play;
         curr_audio_path_ = play_cmd.path;
     }
@@ -225,6 +220,7 @@ void AudioController::shutdown_callback(const ShutdownCmd&)
         curr_state_ != State::Offline)
     {
         curr_state_ = State::Offline;
+        curr_playback_id_ = 0;
         lock.unlock();
 
         if (audio_thread_.joinable())

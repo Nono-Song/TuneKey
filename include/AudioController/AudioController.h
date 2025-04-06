@@ -7,6 +7,7 @@
 #include <thread>
 #include <shared_mutex>
 #include <condition_variable>
+
 #include <boost/filesystem.hpp>
 #include <utility>
 #include <variant>
@@ -88,7 +89,7 @@ private:
 
     void playAudio(const std::stop_token& stoken);
 
-    void reset_playback() noexcept;
+    void reset_playback();
     void play_callback(const PlayCmd& play_cmd);
     void pause_callback(const PauseCmd& pause_cmd);
     void resume_callback(const ResumeCmd& resume_cmd);
@@ -97,18 +98,16 @@ private:
 
     static constexpr int default_duration{10};
 
-    /** Synchronization **/
-    std::jthread state_machine_thread_;
-    std::jthread audio_thread_;
-    mutable std::shared_mutex state_machine_mutex_;
-    std::condition_variable_any audio_condition_;
-
-    /** Shared Data **/
-    std::atomic_int duration_{default_duration};
-    std::atomic_bool audio_waiting_{false};
+    std::unique_ptr<EventQueue<Command>> event_queue_{};
+    mutable std::shared_mutex state_machine_mutex_{};
     State curr_state_{State::Offline};
     boost::filesystem::path curr_audio_path_{};
-    std::unique_ptr<EventQueue<Command>> event_queue_{};
+    std::atomic_uint64_t curr_playback_id_{0};
+    std::atomic_int duration_{default_duration};
+    std::condition_variable_any audio_condition_{};
+
+    std::jthread state_machine_thread_;
+    std::jthread audio_thread_{};
 };
 
 

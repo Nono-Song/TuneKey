@@ -7,15 +7,19 @@
 
 int main()
 {
-    try
+    AudioController controller{};
+    controller.start();
+    std::string input;
+    while (std::cin >> input)
     {
-        AudioController controller{};
-        controller.start();
-        std::string input;
-        while (std::cin >> input)
-        {
-            fmt::print("Input: {}\n", input);
+        fmt::print("Input: {}\n", input);
 
+        try
+        {
+            if (input == "start")
+            {
+                controller.start();
+            }
             if (input == "exit")
             {
                 return 0;
@@ -45,10 +49,10 @@ int main()
                 controller.resume();
             }
         }
-    }
-    catch (std::exception& e)
-    {
-        fmt::print("Toplevel: {}\n", e.what());
+        catch (std::exception& e)
+        {
+            fmt::print("Toplevel: {}\n", e.what());
+        }
     }
 
     return 0;
