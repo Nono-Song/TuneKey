@@ -1,6 +1,8 @@
 #include <string>
 #include <SDL3/SDL.h>
+#include <fmt/base.h>
 #include <Button.h>
+#include <ButtonManager.h>
 #include <EventQueue.hpp>
 #include <iostream>
 
@@ -76,9 +78,70 @@ void button_test_worker(const std::stop_token& stoken)
     test_event<Button::ResumeEvent>(event_queue.pop());
 }
 
+void bm_test_worker(const std::stop_token& stoken)
+{
+    ButtonManager::event_queue event_queue(stoken);
+    ButtonManager bm;
+    const auto id1 = bm.addButton("5", "1");
+    const auto id2 = bm.addButton("4", "3");
+    const auto id3 = bm.addButton("3", "5");
+    const auto id4 = bm.addButton("2", "4");
+    const auto id5 = bm.addButton("1", "2");
+
+    auto& view = bm.getView();
+
+    bm.sortView<Button::name_type>();
+    auto v1 = std::vector<Button::identifier_type>{id5, id4, id3, id2, id1};
+    assert(view == v1);
+
+    bm.sortView<Button::filepath_type>();
+    auto v2 = std::vector<Button::identifier_type>{id1, id5, id2, id4, id3};
+    assert(view == v2);
+
+    bm.sortView();
+    auto v3 = std::vector<Button::identifier_type>{id1, id2, id3, id4, id5};
+    assert(view == v3);
+
+    bm.sortViewReverse<Button::name_type>();
+    std::ranges::reverse(v1);
+    assert(view == v1);
+
+    bm.sortViewReverse<Button::filepath_type>();
+    std::ranges::reverse(v2);
+    assert(view == v2);
+
+    bm.sortViewReverse<Button::identifier_type>();
+    std::ranges::reverse(v3);
+    assert(view == v3);
+
+    try
+    {
+        bm.addButton("1");
+        assert(false);
+    }
+    catch (std::invalid_argument&)
+    {
+    }
+    catch (...)
+    {
+        assert(false);
+    }
+
+    // Modifier Tests
+    const Button::name_type new_name1 = "new_name1";
+    bm.modify_button_name(id3, new_name1);
+    assert(bm[id3].getName() == new_name1);
+
+    const Button::filepath_type new_filepath1 = "new_filepath1";
+    bm.modify_button_filepath(id2, new_filepath1);
+    assert(bm[id2].getFilePath() == new_filepath1);
+}
+
 int main()
 {
     auto t = std::jthread(button_test_worker);
+    t.join();
+    t = std::jthread(bm_test_worker);
     t.join();
 
     AudioController controller;
