@@ -55,34 +55,9 @@ private:
                                  AudioErrorEvent>;
 
     template <typename Cmd, typename... Args>
-    void push_event(Args&&... args)
-    {
-        if (event_queue_)
-        {
-            return event_queue_->push(Cmd(std::forward<Args>(args)...));
-        }
-        throw QueueStoppedException{};
-    }
+    void push_event(Args&&... args);
 
-    Command pop_event()
-    {
-        try
-        {
-            if (event_queue_)
-            {
-                return event_queue_->pop();
-            }
-        }
-        catch (const QueueStoppedException&)
-        {
-            if (curr_state_ != State::Offline)
-            {
-                throw std::runtime_error{"EventQueue stopped unexpectedly"};
-            }
-        }
-
-        return ShutdownEvent{};
-    }
+    Command pop_event();
 
     /** State **/
     enum class State { Offline, Idle, Play, Pause };
@@ -118,6 +93,16 @@ private:
     std::jthread state_machine_thread_;
     std::jthread audio_thread_{};
 };
+
+template <typename Cmd, typename... Args>
+void AudioController::push_event(Args&&... args)
+{
+    if (event_queue_)
+    {
+        return event_queue_->push(Cmd{std::forward<Args>(args)...});
+    }
+    throw QueueStoppedException{};
+}
 
 
 #endif //AUDIOCONTROLLER_H
