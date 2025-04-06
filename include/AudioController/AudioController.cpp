@@ -14,7 +14,6 @@ struct Visitor: Args... { using Args::operator()...; };
 
 // @formatter:on
 AudioController::AudioController() = default;
-
 AudioController::~AudioController()
 {
     if (std::shared_lock l(state_machine_mutex_); curr_state_ != State::Offline)
@@ -22,6 +21,26 @@ AudioController::~AudioController()
         l.unlock();
         shutdown();
     }
+}
+
+AudioController::Command AudioController::pop_event()
+{
+    try
+    {
+        if (event_queue_)
+        {
+            return event_queue_->pop();
+        }
+    }
+    catch (const QueueStoppedException&)
+    {
+        if (curr_state_ != State::Offline)
+        {
+            throw std::runtime_error{"EventQueue stopped unexpectedly"};
+        }
+    }
+
+    return ShutdownEvent{};
 }
 
 void AudioController::start()
