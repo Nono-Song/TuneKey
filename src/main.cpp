@@ -1,8 +1,12 @@
-
 #include <string>
 #include <SDL3/SDL.h>
 #include <Button.h>
 #include <EventQueue.hpp>
+#include <iostream>
+
+#include <fmt/base.h>
+
+#include "AudioController.h"
 
 void test_projector(const Button& button, const Button::ProjVariant& v)
 {
@@ -76,10 +80,17 @@ int main()
 {
     auto t = std::jthread(button_test_worker);
     t.join();
-    fmt::print("Input: {}\n", input);
+
+    AudioController controller;
+    controller.start();
+
+    std::string input;
+    while (std::cin >> input)
+    {
+        fmt::print("Input: {}\n", input);
 
         try
-      {
+        {
             if (input == "start")
             {
                 controller.start();
