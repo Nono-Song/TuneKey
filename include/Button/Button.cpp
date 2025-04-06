@@ -17,7 +17,7 @@ Button::Button(const name_type& name,
 
 Button::Button(name_type name,
                const identifier_type& id,
-               filepath_type path,
+               filename_type path,
                EventQueue<event_type>* queue)
     : name_(std::move(name)),
       id_(id),
@@ -39,7 +39,7 @@ void Button::modify_name(const name_type& arg)
     modify_attribute<Button::name_type>(arg);
 }
 
-void Button::modify_filepath(const filepath_type& arg)
+void Button::modify_filepath(const filename_type& arg)
 {
-    modify_attribute<Button::filepath_type>(arg);
+    modify_attribute<Button::filename_type>(arg);
 }

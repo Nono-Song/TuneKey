@@ -76,9 +76,11 @@ target_link_libraries(ButtonManager
 add_library(Button include/Button/Button.cpp include/Button/Button.h)
 target_include_directories(Button
         PRIVATE
-        include/EventQueue)
+        include/EventQueue
+        include/ButtonEvent)
 target_link_libraries(Button
         PRIVATE
+        ButtonEvent
         EventQueue
         PRIVATE
         Boost::filesystem
