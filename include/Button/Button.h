@@ -11,11 +11,30 @@
 template <typename T>
 class EventQueue;
 
+
+template <typename T>
+concept ButtonAttr = requires()
+{
+    std::is_convertible_v<T, name_type> ||
+    std::is_convertible_v<T, identifier_type> ||
+    std::is_convertible_v<T, filename_type>;
+};
+
+template <typename Evt>
+concept ButtonEvent = requires()
+{
+    std::same_as<Evt, PlayEvent> ||
+    std::same_as<Evt, PauseEvent> ||
+    std::same_as<Evt, ResumeEvent> ||
+    std::same_as<Evt, StopEvent> ;
+};
+
 class Button
 {
-    using event_type = ButtonEvent;
-
 public:
+    using event_type = std::variant<PlayEvent,
+                                    PauseEvent, ResumeEvent,
+                                    StopEvent, ShutdownEvent>;
     using event_queue = EventQueue<event_type>;
 
     /** Ctor, Dtor and Copy Control **/
@@ -38,11 +57,7 @@ public:
         Proj<filename_type>>;
 
     // The public method to obtain a projector given a key
-    template <typename Key>
-        requires
-        std::same_as<Key, name_type> ||
-        std::same_as<Key, identifier_type> ||
-        std::same_as<Key, filename_type>
+    template <ButtonAttr Attr>
     static ProjVariant Projector();
 
 private:
@@ -58,44 +73,38 @@ public:
     [[nodiscard]] const filename_type& getFilePath() const { return file_path_; }
     void modify_name(const name_type& arg);
     void modify_filepath(const filename_type& arg);
-    template <typename Attr, typename T>
-        requires std::is_convertible_v<Attr, filename_type> || std::is_convertible_v<Attr, name_type>
-    void modify_attribute(T&& arg);
 
-    template <typename Evt>
-        requires std::is_same_v<Evt, PlayEvent> ||
-        std::is_same_v<Evt, PauseEvent> ||
-        std::is_same_v<Evt, ResumeEvent> ||
-        std::is_same_v<Evt, StopEvent>
+    // template <ButtonAttr Attr>
+    // void modify_attribute(Attr&& arg);
+
+    template <ButtonEvent Evt>
     void handleEvent() const;
 
 private:
+    event_queue* event_queue_;
     // Todo: Time of creation
     // Todo: Time of last usage
     name_type name_;
     const identifier_type id_;
     filename_type file_path_;
-    event_queue* event_queue_;
 };
 
 /*-------------------------------------------------------------------*
  *             Template Member function Implementation               *
  *-------------------------------------------------------------------*/
-template <typename Attr, typename T>
-    requires std::is_convertible_v<Attr, filename_type> ||
-    std::is_convertible_v<Attr, name_type>
-void Button::modify_attribute(T&& arg)
-{
-    using U = std::decay_t<decltype(arg)>;
-    if constexpr (std::is_same_v<U, name_type>)
-    {
-        name_ = std::forward<T>(arg);
-    }
-    else // if constexpr (std::is_same_v<U, filename_type>)
-    {
-        file_path_ = std::forward<T>(arg);
-    }
-}
+// template <ButtonAttr Attr>
+// void Button::modify_attribute(Attr&& arg)
+// {
+//     using U = std::decay_t<decltype(arg)>;
+//     if constexpr (std::is_convertible_v<U, name_type>)
+//     {
+//         name_ = std::forward<Attr>(arg);
+//     }
+//     else // if constexpr (std::is_same_v<U, filename_type>)
+//     {
+//         file_path_ = std::forward<Attr>(arg);
+//     }
+// }
 
 template <auto MemberPtr>
 Button::ProjVariant Button::createProjector()
@@ -107,13 +116,10 @@ Button::ProjVariant Button::createProjector()
     };
 }
 
-template <typename Key>
-    requires std::same_as<Key, name_type> ||
-    std::same_as<Key, identifier_type> ||
-    std::same_as<Key, filename_type>
+template <ButtonAttr Attr>
 Button::ProjVariant Button::Projector()
 {
-    using U = Key;
+    using U = Attr;
     if constexpr (std::is_same_v<U, name_type>)
     {
         return createProjector<&Button::name_>();
@@ -128,11 +134,7 @@ Button::ProjVariant Button::Projector()
     }
 }
 
-template <typename Evt>
-    requires std::is_same_v<Evt, PlayEvent> ||
-    std::is_same_v<Evt, PauseEvent> ||
-    std::is_same_v<Evt, ResumeEvent> ||
-    std::is_same_v<Evt, StopEvent>
+template <ButtonEvent Evt>
 void Button::handleEvent() const
 {
     if constexpr (std::is_same_v<Evt, PlayEvent>)

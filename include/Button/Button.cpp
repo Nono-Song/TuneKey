@@ -36,10 +36,10 @@ Button::Button(Button&& other) noexcept
 
 void Button::modify_name(const name_type& arg)
 {
-    modify_attribute<Button::name_type>(arg);
+    name_ = arg;
 }
 
 void Button::modify_filepath(const filename_type& arg)
 {
-    modify_attribute<Button::filename_type>(arg);
+    file_path_ = arg;
 }
