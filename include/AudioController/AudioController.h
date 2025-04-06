@@ -5,9 +5,9 @@
 #ifndef AUDIOCONTROLLER_H
 #define AUDIOCONTROLLER_H
 #include <thread>
-#include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
+
 #include <boost/filesystem.hpp>
 #include <utility>
 #include <variant>
@@ -24,92 +24,99 @@ public:
     AudioController& operator=(AudioController&&) = delete;
 
     void start();
-    void shutdown() const;
+    void shutdown();
 
     // Change state
-    void play(const boost::filesystem::path& path) const;
-    void pause() const;
-    void resume() const;
-    void stop() const;
-
-    void stateMachineLoop(const std::stop_token& stoken);
+    void play(const boost::filesystem::path& path);
+    void pause();
+    void resume();
+    void stop();
 
 private:
+    // @formatter:off
     /** Command **/
-    struct PlayCmd
+    struct PlayEvent
     {
-        PlayCmd() = default;
-
-        explicit PlayCmd(boost::filesystem::path path): path(std::move(path))
-        {
-        }
-
-        PlayCmd(const PlayCmd& other) = default;
-
-        PlayCmd(PlayCmd&& other) noexcept: path(std::move(other.path))
-        {
-        }
-
+        explicit PlayEvent(boost::filesystem::path path): path(std::move(path)) {}
         boost::filesystem::path path;
     };
+    struct PauseEvent{};
+    struct ResumeEvent{};
+    struct StopEvent{};
+    struct ShutdownEvent{};
+    struct AudioFinishedEvent{};
+    struct AudioErrorEvent{};
 
-    struct PauseCmd
-    {
-    };
-
-    struct ResumeCmd
-    {
-    };
-
-    struct StopCmd
-    {
-    };
-
-    struct ShutdownCmd
-    {
-    };
-
-    using Command = std::variant<PlayCmd,
-                                 PauseCmd,
-                                 ResumeCmd,
-                                 StopCmd,
-                                 ShutdownCmd>;
+    // @formatter:on
+    using Command = std::variant<PlayEvent,
+                                 PauseEvent, ResumeEvent,
+                                 StopEvent, ShutdownEvent,
+                                 AudioFinishedEvent,
+                                 AudioErrorEvent>;
 
     template <typename Cmd, typename... Args>
-    void push_command(Args&&... args) const
+    void push_event(Args&&... args)
     {
-        event_queue_->push(Cmd(std::forward<Args>(args)...));
+        if (event_queue_)
+        {
+            return event_queue_->push(Cmd(std::forward<Args>(args)...));
+        }
+        throw QueueStoppedException{};
     }
 
-    auto pop_command() const
+    Command pop_event()
     {
-        return event_queue_->pop();
+        try
+        {
+            if (event_queue_)
+            {
+                return event_queue_->pop();
+            }
+        }
+        catch (const QueueStoppedException&)
+        {
+            if (curr_state_ != State::Offline)
+            {
+                throw std::runtime_error{"EventQueue stopped unexpectedly"};
+            }
+        }
+
+        return ShutdownEvent{};
     }
 
     /** State **/
-    enum class State
-    {
-        Offline, Idle, Play, Pause
-    };
+    enum class State { Offline, Idle, Play, Pause };
 
-    // To SDL2?
-    void playAudio(const std::stop_token& stoken);
-    // Todo: void pauseAudio() const;
-    // Todo: void resumeAudio() const;
+    // In case of audio error and need to just restart the audio thread...
+    void start_audio_thread() noexcept;
+    // Audio thread main loop
+    void audio_event_loop(const std::stop_token&);
+    void state_machine_loop(const std::stop_token& stoken) noexcept;
 
-    /** Synchronization **/
-    std::jthread state_machine_thread_;
-    std::jthread audio_thread_;
-    mutable std::mutex audio_mutex_;
-    mutable std::shared_mutex state_machine_mutex_;
-    std::condition_variable_any audio_condition_;
+    void reset_playback();
 
-    /** Shared Data **/
-    State curr_state_{State::Offline};
-    std::atomic_int duration_{10};
-    std::atomic_bool audio_paused_{false};
-    boost::filesystem::path curr_audio_path_{};
+    // State change callback functions
+    void play_callback(const PlayEvent&);
+    void pause_callback(const PauseEvent&);
+    void resume_callback(const ResumeEvent&);
+    void stop_callback(const StopEvent&);
+    void audio_finished_callback(const AudioFinishedEvent&);
+    void shutdown_callback(const ShutdownEvent&);
+    void error_callback(const AudioErrorEvent&);
+
+    static constexpr int default_duration{10};
+
+    std::stop_source machine_ssource_{};
     std::unique_ptr<EventQueue<Command>> event_queue_{};
+    mutable std::shared_mutex state_machine_mutex_{};
+    State curr_state_{State::Offline};
+    boost::filesystem::path curr_audio_path_{};
+    std::atomic_uint64_t curr_playback_id_{0};
+    std::atomic_int duration_{default_duration};
+    std::condition_variable_any audio_condition_{};
+
+    std::jthread state_machine_thread_;
+    std::jthread audio_thread_{};
 };
 
 
