@@ -47,8 +47,10 @@ void AudioController::start()
     event_queue_ = std::make_unique<EventQueue<Command>>(machine_ssource_.get_token());
 
     state_machine_thread_ = std::jthread{
-        [this](const std::stop_token& stoken) // This token IS from machine_ssource_
+        [this](const std::stop_token& stoken)
         {
+            // There is a level of indirection here.
+            // Is there a way to let the created thread use the machine_ssource directly?
             std::stop_callback cb{
                 stoken,
                 [this]()
