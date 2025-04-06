@@ -32,30 +32,30 @@ public:
     void resume();
     void stop();
 
-    void stateMachineLoop(const std::stop_token& stoken) noexcept;
-
 private:
     // @formatter:off
     /** Command **/
-    struct PlayCmd
+    struct PlayEvent
     {
-        explicit PlayCmd(boost::filesystem::path path): path(std::move(path)) {}
+        explicit PlayEvent(boost::filesystem::path path): path(std::move(path)) {}
         boost::filesystem::path path;
     };
-    struct PauseCmd{};
-    struct ResumeCmd{};
-    struct StopCmd{};
-    struct ShutdownCmd{};
-
-    using Command = std::variant<PlayCmd,
-                                 PauseCmd,
-                                 ResumeCmd,
-                                 StopCmd,
-                                 ShutdownCmd>;
+    struct PauseEvent{};
+    struct ResumeEvent{};
+    struct StopEvent{};
+    struct ShutdownEvent{};
+    struct AudioFinishedEvent{};
+    struct AudioErrorEvent{};
 
     // @formatter:on
+    using Command = std::variant<PlayEvent,
+                                 PauseEvent, ResumeEvent,
+                                 StopEvent, ShutdownEvent,
+                                 AudioFinishedEvent,
+                                 AudioErrorEvent>;
+
     template <typename Cmd, typename... Args>
-    void push_command(Args&&... args)
+    void push_event(Args&&... args)
     {
         if (event_queue_)
         {
@@ -64,7 +64,7 @@ private:
         throw QueueStoppedException{};
     }
 
-    Command pop_command()
+    Command pop_event()
     {
         try
         {
@@ -81,23 +81,32 @@ private:
             }
         }
 
-        return ShutdownCmd{};
+        return ShutdownEvent{};
     }
 
     /** State **/
     enum class State { Offline, Idle, Play, Pause };
 
-    void playAudio(const std::stop_token& stoken);
+    // In case of audio error and need to just restart the audio thread...
+    void start_audio_thread() noexcept;
+    // Audio thread main loop
+    void audio_event_loop(const std::stop_token&);
+    void state_machine_loop(const std::stop_token& stoken) noexcept;
 
     void reset_playback();
-    void play_callback(const PlayCmd& play_cmd);
-    void pause_callback(const PauseCmd& pause_cmd);
-    void resume_callback(const ResumeCmd& resume_cmd);
-    void stop_callback(const StopCmd& stop_cmd);
-    void shutdown_callback(const ShutdownCmd& shutdown_cmd);
+
+    // State change callback functions
+    void play_callback(const PlayEvent&);
+    void pause_callback(const PauseEvent&);
+    void resume_callback(const ResumeEvent&);
+    void stop_callback(const StopEvent&);
+    void audio_finished_callback(const AudioFinishedEvent&);
+    void shutdown_callback(const ShutdownEvent&);
+    void error_callback(const AudioErrorEvent&);
 
     static constexpr int default_duration{10};
 
+    std::stop_source machine_ssource_{};
     std::unique_ptr<EventQueue<Command>> event_queue_{};
     mutable std::shared_mutex state_machine_mutex_{};
     State curr_state_{State::Offline};
