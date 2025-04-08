@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <string>
 #include <boost/filesystem.hpp>
+#include <variant>
 
 using identifier_type = uint64_t;
 using name_type = std::string;
@@ -55,3 +56,11 @@ struct AudioErrorEvent
 };
 
 struct ShutdownEvent {};
+
+using Event = std::variant<PlayEvent,
+                           PauseEvent,
+                           ResumeEvent,
+                           StopEvent,
+                           AudioFinishedEvent,
+                           AudioErrorEvent,
+                           ShutdownEvent>;

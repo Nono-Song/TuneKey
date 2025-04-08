@@ -62,7 +62,7 @@ target_include_directories(Event INTERFACE include/EventQueue)
 target_link_libraries(Event INTERFACE Boost::filesystem Boost::system)
 
 # ButtonManager
-add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.hpp)
+add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.h)
 target_include_directories(ButtonManager
         PRIVATE
         include/Button
