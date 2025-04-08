@@ -2,7 +2,7 @@
 // Created by Schizoneurax on 3/18/2025.
 //
 
-#include "AudioController.h"
+#include "AudioController.hpp"
 #include <chrono>
 #include <fmt/base.h>
 
