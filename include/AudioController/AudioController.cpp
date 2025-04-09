@@ -8,6 +8,15 @@
 
 using namespace std::literals::chrono_literals;
 
+inline std::optional<identifier_type>& operator++(std::optional<identifier_type>& id)
+{
+    id = id.transform([](identifier_type op)
+    {
+        return ++op;
+    });
+    return id;
+}
+
 // @formatter:off
 template <typename... Args>
 struct Visitor: Args... { using Args::operator()...; };
@@ -132,6 +141,7 @@ void AudioController::stop(const identifier_type id)
 
 void AudioController::start_audio_thread() noexcept
 {
+    curr_playback_id_ = 0;
     audio_thread_ = std::jthread([this](const std::stop_token& stoken)
     {
         try { audio_event_loop(stoken); }
@@ -191,7 +201,6 @@ void AudioController::audio_event_loop(const std::stop_token& stoken)
                            playback_id, curr_playback_id_.value_or(0));
                 break;
             }
-
 
             // Actual simulation
             std::this_thread::sleep_for(std::chrono::milliseconds(interval));
@@ -277,7 +286,7 @@ void AudioController::play_callback(const PlayEvent& play_evt)
         reset_playback();
         fmt::print("Playing new audio...\n");
         // This is critical for the audio thread to distinguish a new audio from its current audio,
-        curr_playback_id_ = play_evt.id;
+        ++curr_playback_id_;
         curr_state_ = State::Play;
 
         // PlayEvent will have more metadata in actual implementation and I should let
