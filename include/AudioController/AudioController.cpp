@@ -12,11 +12,10 @@ using namespace std::literals::chrono_literals;
 template <typename... Args>
 struct Visitor: Args... { using Args::operator()...; };
 
-// @formatter:on
-AudioController::AudioController(std::unique_ptr<EventQueue<Event>>& ep): event_queue_(ep)
-{
-}
+AudioController::AudioController(std::unique_ptr<EventQueue<Event>>& ep)
+: event_queue_(ep) {}
 
+// @formatter:on
 AudioController::~AudioController()
 {
     if (std::shared_lock l(state_machine_mutex_); curr_state_ != State::Offline)
@@ -70,10 +69,7 @@ void AudioController::start()
             // Is there a way to let the created thread use the machine_ssource directly?
             std::stop_callback cb{
                 stoken,
-                [this]()
-                {
-                    machine_ssource_.request_stop();
-                }
+                [this]() { machine_ssource_.request_stop(); }
             };
             // state_machine_loop doesn't throw exception
             state_machine_loop(machine_ssource_.get_token());
@@ -139,7 +135,7 @@ void AudioController::start_audio_thread() noexcept
         try { audio_event_loop(stoken); }
         catch (std::exception& e)
         {
-            push_event<AudioErrorEvent>(identifier_type{0}, "playAudioLoop: " + std::string(e.what()) + "\n");
+            push_event<AudioErrorEvent>(std::nullopt, "playAudioLoop: " + std::string(e.what()) + "\n");
         }
     });
 }
@@ -170,7 +166,7 @@ void AudioController::audio_event_loop(const std::stop_token& stoken)
         }
         else
         {
-            push_event<AudioErrorEvent>(identifier_type{0}, "Unknown playback id");
+            push_event<AudioErrorEvent>(std::nullopt, "Unknown playback id");
             break;
         }
 
@@ -242,6 +238,7 @@ void AudioController::audio_event_loop(const std::stop_token& stoken)
 
 void AudioController::reset_playback()
 {
+    assert(curr_state_ != State::Offline && curr_state_ != State::Error);
     // Reset all playback metadata for a new playback
     // Maybe it should be "populating all metadata for a new playback"
     // Definitely need to change in the future so I'll leave a TODO here.
@@ -252,10 +249,12 @@ void AudioController::reset_playback()
 
 void AudioController::play_callback(const PlayEvent& play_evt)
 {
+    std::scoped_lock callback_lock(callback_mutex_);
+
     // Play a new audio, irrespective of the current state,
     // except the machine has already shutdown, aka. in offline state.
     if (std::scoped_lock l(state_machine_mutex_);
-        curr_state_ != State::Offline)
+        curr_state_ != State::Offline && curr_state_ != State::Error)
     {
         // Suppose to reset all metadata. Currently not much to do.
         // In real implementation, the PlayEvent struct should contain all necessary metadata
@@ -277,6 +276,8 @@ void AudioController::play_callback(const PlayEvent& play_evt)
 
 void AudioController::pause_callback(const PauseEvent& evt)
 {
+    std::scoped_lock callback_lock(callback_mutex_);
+
     // Pause the playback while keep all metadata.
     // Only makes sense if we are actually playing the audio
     if (std::unique_lock lock(state_machine_mutex_);
@@ -288,6 +289,8 @@ void AudioController::pause_callback(const PauseEvent& evt)
 
 void AudioController::resume_callback(const ResumeEvent& evt)
 {
+    std::scoped_lock callback_lock(callback_mutex_);
+
     // Resume playback. Only makes sense if the playback is actually paused.
     if (std::scoped_lock lock(state_machine_mutex_);
         curr_state_ == State::Pause && curr_playback_id_ == evt.id)
@@ -299,11 +302,14 @@ void AudioController::resume_callback(const ResumeEvent& evt)
 
 void AudioController::stop_callback(const StopEvent& evt)
 {
+    std::scoped_lock callback_lock(callback_mutex_);
+
     // Manually stop the audio. The audio could be playing or paused.
     // After StopEvent, only a PlayEvent or ShutdownEvent will trigger a state change.
     if (std::unique_lock lock(state_machine_mutex_);
         curr_state_ != State::Idle &&
         curr_state_ != State::Offline &&
+        curr_state_ != State::Error &&
         curr_playback_id_ == evt.id)
     {
         // reset_playback(); Not necessary. A new PlayEvent will do that.
@@ -317,6 +323,8 @@ void AudioController::stop_callback(const StopEvent& evt)
 
 void AudioController::audio_finished_callback(const AudioFinishedEvent&)
 {
+    std::scoped_lock callback_lock(callback_mutex_);
+
     // Just as the name suggests, AudioFinishEvent should only arrive when the audio
     // has finished playing. Currently, there is no way to know if the audio's truly
     // finished as we only simulate the audio playback here. However, according to the
@@ -334,6 +342,8 @@ void AudioController::audio_finished_callback(const AudioFinishedEvent&)
 
 void AudioController::shutdown_callback(const ShutdownEvent&)
 {
+    std::scoped_lock callback_lock(callback_mutex_);
+
     // Completely shutdown the state machine loop and the audio thread.
     // Need to call start() again to restart.
     if (std::unique_lock lock(state_machine_mutex_);
@@ -357,16 +367,15 @@ void AudioController::shutdown_callback(const ShutdownEvent&)
 
 void AudioController::error_callback(const AudioErrorEvent&)
 {
-    // Currently it restarts the audio thread in Idle state.
+    std::scoped_lock callback_lock(callback_mutex_);
     // Add things when we actually implement the audio playback functionality
     // The argument is not used right now but in future it may contain information
     {
         std::scoped_lock lock(state_machine_mutex_);
-        curr_state_ = State::Idle;
+        curr_state_ = State::Error;
     }
-
-    // audio thread is definitely joinable but just to be a good boy
-    // and checks everytime before join()
+    // Make sure audio thread is not blocked after firing the AudioErrorEvent
+    // Otherwise deadlock occurs.
     if (audio_thread_.joinable())
     {
         audio_thread_.join();

@@ -38,7 +38,7 @@ private:
     Event pop_event();
 
     /** State **/
-    enum class State { Offline, Idle, Play, Pause };
+    enum class State { Error, Offline, Idle, Play, Pause };
 
     // In case of audio error and need to just restart the audio thread...
     void start_audio_thread() noexcept;
@@ -62,6 +62,7 @@ private:
     std::stop_source machine_ssource_{};
     std::unique_ptr<EventQueue<Event>>& event_queue_;
     mutable std::shared_mutex state_machine_mutex_{};
+    mutable std::shared_mutex callback_mutex_{};
     State curr_state_{State::Offline};
     boost::filesystem::path curr_audio_path_{};
     std::optional<identifier_type> curr_playback_id_{};
