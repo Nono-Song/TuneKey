@@ -39,6 +39,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         include/AudioController
         include/Button
         include/EventQueue
+        include/Event
 )
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
@@ -46,6 +47,7 @@ target_link_libraries(${PROJECT_NAME}
         EventQueue
         ButtonManager
         AudioController
+        Event
         SDL3::SDL3
         fmt::fmt
 )
@@ -55,19 +57,21 @@ target_link_libraries(${PROJECT_NAME}
 add_library(EventQueue INTERFACE)
 target_include_directories(EventQueue INTERFACE include/EventQueue)
 
-add_library(ButtonEvent INTERFACE)
-target_include_directories(ButtonEvent INTERFACE include/ButtonEvent)
-target_link_libraries(ButtonEvent INTERFACE Boost::filesystem Boost::system)
+add_library(Event INTERFACE)
+target_include_directories(Event INTERFACE include/EventQueue)
+target_link_libraries(Event INTERFACE Boost::filesystem Boost::system)
 
 # ButtonManager
 add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.h)
 target_include_directories(ButtonManager
         PRIVATE
         include/Button
-        include/AudioController)
+        include/AudioController
+        include/Event)
 target_link_libraries(ButtonManager
         PRIVATE
         Button
+        Event
         AudioController
         Boost::filesystem
         Boost::system)
@@ -77,10 +81,10 @@ add_library(Button include/Button/Button.cpp include/Button/Button.h)
 target_include_directories(Button
         PRIVATE
         include/EventQueue
-        include/ButtonEvent)
+        include/Event)
 target_link_libraries(Button
         PRIVATE
-        ButtonEvent
+        Event
         EventQueue
         PRIVATE
         Boost::filesystem
