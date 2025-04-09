@@ -159,16 +159,17 @@ void AudioController::audio_event_loop(const std::stop_token& stoken)
         {
             return curr_state_ == State::Play && curr_playback_id_;
         });
-        if (stoken.stop_requested()) { break; }
+        if (stoken.stop_requested() || curr_state_ == State::Error) { break; }
 
         const auto audio_path = curr_audio_path_;
-
         if (curr_playback_id_)
         {
             playback_id = curr_playback_id_.value();
         }
         else
         {
+            // push_event is a potentially blocking function
+            lock.unlock();
             push_event<AudioErrorEvent>(std::nullopt, "Unknown playback id");
             break;
         }
@@ -217,7 +218,7 @@ void AudioController::audio_event_loop(const std::stop_token& stoken)
 
             if (std::shared_lock stop_lock(state_machine_mutex_);
                 curr_state_ == State::Idle ||
-                curr_state_ == State::Offline ||
+                curr_state_ == State::Error ||
                 stoken.stop_requested())
             {
                 break;
@@ -225,9 +226,11 @@ void AudioController::audio_event_loop(const std::stop_token& stoken)
         }
 
         if (std::shared_lock state_lock(state_machine_mutex_);
-            curr_state_ == State::Idle || stoken.stop_requested())
+            curr_state_ == State::Idle ||
+            curr_state_ == State::Error ||
+            stoken.stop_requested())
         {
-            fmt::print("Audio interrupted...\n");
+            fmt::print("Audio stopped...\n");
         }
         // Here we've broken out of the loop while still have the same playback_id
         // We must have been playing the same audio to its end.
@@ -235,8 +238,17 @@ void AudioController::audio_event_loop(const std::stop_token& stoken)
         else if (playback_id == curr_playback_id_)
         {
             fmt::print("Audio finished naturally\n");
-            curr_playback_id_.reset();
+            state_lock.unlock();
             push_event<AudioFinishedEvent>(playback_id);
+
+            // Re-enter the loop only if state has been changed to idle
+            if (state_lock.lock(); curr_state_ == State::Play)
+            {
+                audio_condition_.wait(state_lock, stoken, [this]()
+                {
+                    return curr_state_ != State::Play;
+                });
+            }
         }
     }
 }
@@ -336,10 +348,10 @@ void AudioController::audio_finished_callback(const AudioFinishedEvent&)
     if (std::scoped_lock lock(state_machine_mutex_);
         curr_state_ == State::Play)
     {
-        // There is no need to notify anyone because the audio thread will only wake up
-        // to find the current state being Idle and go back to sleep immediately.
-        // reset_playback? Not necessary. A new PlayEvent will do that.
-        curr_state_ = State::Idle; // just change the state.
+        curr_state_ = State::Idle;
+        // Audio thread goes to sleep after finishes the audio playback
+        // so a notification is needed.
+        audio_condition_.notify_one();
     }
 }
 
