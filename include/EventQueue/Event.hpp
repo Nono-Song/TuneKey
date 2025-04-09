@@ -8,6 +8,7 @@
 #include <string>
 #include <boost/filesystem.hpp>
 #include <variant>
+#include <optional>
 
 using identifier_type = uint64_t;
 using name_type = std::string;
@@ -49,9 +50,11 @@ struct AudioFinishedEvent
 
 struct AudioErrorEvent
 {
-    explicit AudioErrorEvent(const identifier_type id, std::string s)
+    AudioErrorEvent(std::optional<identifier_type>&& id, std::string s)
+    : id(std::move(id)), error_msg(std::move(s)) {}
+    AudioErrorEvent(const std::optional<identifier_type>& id, std::string s)
     : id(id), error_msg(std::move(s)) {}
-    identifier_type id;
+    std::optional<identifier_type> id;
     std::string error_msg;
 };
 
