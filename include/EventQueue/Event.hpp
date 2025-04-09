@@ -64,3 +64,12 @@ using Event = std::variant<PlayEvent,
                            AudioFinishedEvent,
                            AudioErrorEvent,
                            ShutdownEvent>;
+
+template <typename T>
+concept EventType = std::same_as<T, PlayEvent> ||
+                    std::same_as<T, ResumeEvent> ||
+                    std::same_as<T, PauseEvent> ||
+                    std::same_as<T, StopEvent> ||
+                    std::same_as<T, ShutdownEvent> ||
+                    std::same_as<T, AudioFinishedEvent> ||
+                    std::same_as<T, AudioErrorEvent>;
