@@ -26,37 +26,6 @@ public:
     {
     }
 
-    void push(std::initializer_list<Event> events)
-    {
-        std::unique_lock<std::mutex> lock(mutex_);
-        if (stoken_.stop_requested())
-        {
-            throw QueueStoppedException();
-        }
-
-        if (!notfull_.wait(lock, stoken_, [this, &events]()
-        {
-            return queue_.size() < max_size;
-        }))
-        {
-            throw QueueStoppedException();
-        }
-
-        for (auto&& evt : events)
-        {
-            if (queue_.size() < max_size)
-            {
-                queue_.push(evt);
-            }
-            else if (!notfull_.wait(lock, stoken_, [this, &events]() { return queue_.size() < max_size; }))
-            {
-                throw QueueStoppedException();
-            }
-        }
-
-        nonempty_.notify_all();
-    }
-
     void push(Event&& evt)
     {
         std::unique_lock lock(mutex_);
@@ -70,7 +39,7 @@ public:
             throw QueueStoppedException();
         }
 
-        queue_.push(std::forward<Event>(evt));
+        queue_.emplace(std::forward<Event>(evt));
         nonempty_.notify_all();
     }
 

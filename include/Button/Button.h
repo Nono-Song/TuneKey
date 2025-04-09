@@ -5,74 +5,69 @@
 #include <EventQueue.hpp>
 #include <string>
 #include <variant>
+#include <concepts>
 #include <boost/filesystem.hpp>
+#include <Event.hpp>
+
+template <typename... T>
+constexpr bool always_false = false;
 
 template <typename T>
 class EventQueue;
 
+template <typename T>
+concept Identifier = std::same_as<T, identifier_type>;
+
+template <typename T>
+concept NameType = std::same_as<T, name_type>;
+
+template <typename T>
+concept Filename = std::same_as<T, filename_type>;
+
+template <typename T>
+concept ButtonEvent =
+    std::same_as<T, PlayEvent> ||
+    std::same_as<T, PauseEvent> ||
+    std::same_as<T, StopEvent> ||
+    std::same_as<T, ResumeEvent>;
+
+
+template <typename T>
+concept ButtonAttr = NameType<T> || Filename<T> || Identifier<T>;
+
+template <typename T>
+concept ButtonAttrArg = std::assignable_from<name_type&, T> || std::assignable_from<filename_type&, T>;
+
 class Button
 {
-public:
-    using name_type = std::string;
-    using identifier_type = size_t;
-    using filepath_type = boost::filesystem::path;
-    struct PlayEvent;
-    struct ResumeEvent;
-    struct PauseEvent;
-    struct StopEvent;
-    using event_type = std::variant<PlayEvent,
-                                    PauseEvent,
-                                    ResumeEvent,
-                                    StopEvent>;
+    // Make friend with ButtonManager voids the meaning of my complex projector functions...
+    // But maybe some other code will make uses of them?
+    friend class ButtonManager;
 
+public:
+    using event_type = Event;
     using event_queue = EventQueue<event_type>;
 
-    struct PlayEvent
-    {
-        identifier_type id;
-        filepath_type filepath;
-    };
-
-    struct PauseEvent
-    {
-        identifier_type id;
-    };
-
-    struct ResumeEvent
-    {
-        identifier_type id;
-    };
-
-    struct StopEvent
-    {
-        identifier_type id;
-    };
-
     /** Ctor, Dtor and Copy Control **/
-    Button(const name_type&, const identifier_type& id, EventQueue<event_type>* queue);
-    Button(name_type, const identifier_type& id, filepath_type path, EventQueue<event_type>* queue);
-    Button(Button&& other) noexcept;
-    ~Button() noexcept;
+    Button(const name_type&, const identifier_type& id, std::unique_ptr<event_queue>& queue);
+    Button(name_type name, const identifier_type& id, filename_type path, std::unique_ptr<event_queue>& queue);
 
-    Button() = delete;
+    ~Button() noexcept;
+    Button(Button&& other) noexcept;
     Button(const Button& other) = delete;
     Button& operator=(const Button& other) = delete;
     Button& operator=(Button&& other) = delete;
 
     /** Projector **/
-    template <typename U>
+    template <ButtonAttr U>
     using Proj = const U&(*)(const Button&);
     using ProjVariant = std::variant<
         Proj<name_type>,
         Proj<identifier_type>,
-        Proj<filepath_type>>;
+        Proj<filename_type>>;
 
     // The public method to obtain a projector given a key
-    template <typename Key>
-        requires
-        std::same_as<Key, Button::name_type> ||
-        std::same_as<Key, Button::identifier_type> ||
-        std::same_as<Key, Button::filepath_type>
+    template <ButtonAttr Attr>
     static ProjVariant Projector();
 
 private:
@@ -85,45 +80,42 @@ public:
     /** Getter & Setter  **/
     [[nodiscard]] const name_type& getName() const { return name_; }
     [[nodiscard]] const identifier_type& getID() const { return id_; }
-    [[nodiscard]] const filepath_type& getFilePath() const { return file_path_; }
-    void modify_name(const name_type& arg);
-    void modify_filepath(const filepath_type& arg);
-    template <typename Attr, typename T>
-        requires std::is_convertible_v<Attr, Button::filepath_type> || std::is_convertible_v<Attr, Button::name_type>
-    void modify_attribute(T&& arg);
+    [[nodiscard]] const filename_type& getFilePath() const { return file_path_; }
 
-    template <typename Evt>
-        requires std::is_same_v<Evt, Button::PlayEvent> ||
-        std::is_same_v<Evt, Button::PauseEvent> ||
-        std::is_same_v<Evt, Button::ResumeEvent> ||
-        std::is_same_v<Evt, Button::StopEvent>
+    template <ButtonAttr Attr, ButtonAttrArg S>
+    void modify(S&& arg);
+
+    template <ButtonEvent Evt>
     void handleEvent() const;
 
 private:
+    std::unique_ptr<event_queue>& event_queue_;
     // Todo: Time of creation
     // Todo: Time of last usage
     name_type name_;
     const identifier_type id_;
-    filepath_type file_path_;
-    event_queue* event_queue_;
+    filename_type file_path_;
 };
 
 /*-------------------------------------------------------------------*
  *             Template Member function Implementation               *
  *-------------------------------------------------------------------*/
-template <typename Attr, typename T>
-    requires std::is_convertible_v<Attr, Button::filepath_type> ||
-    std::is_convertible_v<Attr, Button::name_type>
-void Button::modify_attribute(T&& arg)
+template <ButtonAttr Attr, ButtonAttrArg S>
+void Button::modify(S&& arg)
 {
-    using U = std::decay_t<decltype(arg)>;
-    if constexpr (std::is_same_v<U, name_type>)
+    using T = decltype(arg);
+    if constexpr (std::is_same_v<Attr, name_type>)
     {
         name_ = std::forward<T>(arg);
     }
-    else // if constexpr (std::is_same_v<U, filepath_type>)
+    else if constexpr (std::is_same_v<Attr, filename_type>)
     {
         file_path_ = std::forward<T>(arg);
+    }
+    else
+    {
+        static_assert(false, "Unhandled case in Button::modify. "
+                      "Update if constexpr chain for concept ButtonAttr");
     }
 }
 
@@ -137,48 +129,48 @@ Button::ProjVariant Button::createProjector()
     };
 }
 
-template <typename Key>
-    requires std::same_as<Key, Button::name_type> ||
-    std::same_as<Key, Button::identifier_type> ||
-    std::same_as<Key, Button::filepath_type>
+template <ButtonAttr Attr>
 Button::ProjVariant Button::Projector()
 {
-    using U = Key;
-    if constexpr (std::is_same_v<U, Button::name_type>)
+    using U = Attr;
+    if constexpr (std::is_same_v<U, name_type>)
     {
         return createProjector<&Button::name_>();
     }
-    else if constexpr (std::is_same_v<U, Button::identifier_type>)
+    else if constexpr (std::is_same_v<U, identifier_type>)
     {
         return createProjector<&Button::id_>();
     }
-    else // if (std::is_same_v<U, filepath_type>)
+    else if constexpr (std::is_same_v<U, filename_type>)
     {
         return createProjector<&Button::file_path_>();
     }
+    else
+    {
+        static_assert(always_false<U>,
+                      "Unhandled case in Button::Projector: Update if constexpr chain for ButtonAttr!");
+        throw std::logic_error("Unhandled case in Button::Projector");
+    }
 }
 
-template <typename Evt>
-    requires std::is_same_v<Evt, Button::PlayEvent> ||
-    std::is_same_v<Evt, Button::PauseEvent> ||
-    std::is_same_v<Evt, Button::ResumeEvent> ||
-    std::is_same_v<Evt, Button::StopEvent>
+template <ButtonEvent Evt>
 void Button::handleEvent() const
 {
     if constexpr (std::is_same_v<Evt, PlayEvent>)
     {
         event_queue_->push(Evt{id_, file_path_});
     }
-    else if constexpr (std::is_same_v<Evt, PauseEvent>)
+    else if constexpr (
+        std::is_same_v<Evt, PauseEvent> ||
+        std::is_same_v<Evt, ResumeEvent> ||
+        std::is_same_v<Evt, StopEvent>)
     {
         event_queue_->push(Evt{id_});
     }
-    else if constexpr (std::is_same_v<Evt, ResumeEvent>)
+    else
     {
-        event_queue_->push(Evt{id_});
-    }
-    else // if constexpr (std::is_same_v<Evt, StopEvent>)
-    {
-        event_queue_->push(Evt{id_});
+        static_assert(always_false<Evt>,
+                      "Unhandled case in Button::handleEvent: "
+                      "not a Button event or change in ButtonEvent concept");
     }
 }
