@@ -10,7 +10,7 @@ Button::~Button() noexcept = default;
 
 Button::Button(const name_type& name,
                const identifier_type& id,
-               EventQueue<event_type>* queue)
+               std::unique_ptr<event_queue>& queue)
     : Button(name, id, "", queue)
 {
 };
@@ -18,28 +18,18 @@ Button::Button(const name_type& name,
 Button::Button(name_type name,
                const identifier_type& id,
                filename_type path,
-               EventQueue<event_type>* queue)
-    : name_(std::move(name)),
+               std::unique_ptr<event_queue>& queue)
+    : event_queue_(queue),
+      name_(std::move(name)),
       id_(id),
-      file_path_(std::move(path)),
-      event_queue_(queue)
+      file_path_(std::move(path))
 {
 };
 
 Button::Button(Button&& other) noexcept
-    : name_{std::move(other.name_)},
+    : event_queue_(other.event_queue_),
+      name_{std::move(other.name_)},
       id_{other.id_},
-      file_path_{std::move(other.file_path_)},
-      event_queue_(other.event_queue_)
+      file_path_{std::move(other.file_path_)}
 {
-}
-
-void Button::modify_name(const name_type& arg)
-{
-    name_ = arg;
-}
-
-void Button::modify_filepath(const filename_type& arg)
-{
-    file_path_ = arg;
 }
