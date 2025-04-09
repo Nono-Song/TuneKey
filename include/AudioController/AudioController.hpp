@@ -53,6 +53,7 @@ private:
     void pause_callback(const PauseEvent&);
     void resume_callback(const ResumeEvent&);
     void stop_callback(const StopEvent&);
+    void audio_ready_callback(const AudioReadyEvent&);
     void audio_finished_callback(const AudioFinishedEvent&);
     void shutdown_callback(const ShutdownEvent&);
     void error_callback(const AudioErrorEvent&);

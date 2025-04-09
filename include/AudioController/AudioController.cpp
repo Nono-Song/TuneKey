@@ -47,16 +47,13 @@ Event AudioController::pop_event()
 
 void AudioController::start()
 {
-    if (std::shared_lock l(state_machine_mutex_);
-        curr_state_ != State::Offline
-    )
+    if (audio_thread_.joinable() || state_machine_thread_.joinable())
     {
         throw std::runtime_error("AudioController::start() failed: Instance running");
     }
 
     // Will only reach here if the current state is Offline, which means no other thread
     // is actively running. (Although state machine thread may haven't joined yet)
-    curr_state_ = State::Idle;
     start_audio_thread();
 
     // reset the stop source state in case of re-start
@@ -148,6 +145,7 @@ void AudioController::audio_event_loop(const std::stop_token& stoken)
     // In both two cases we have no way to know there's a new audio to play.
     // So here we just compare our playback_id with curr_playback_id_. The later will be updated
     // by the state change callback functions in case a new audio arrives.
+    push_event<AudioReadyEvent>();
     uint64_t playback_id = 0;
     while (!stoken.stop_requested())
     {
@@ -320,6 +318,16 @@ void AudioController::stop_callback(const StopEvent& evt)
     }
 }
 
+void AudioController::audio_ready_callback(const AudioReadyEvent&)
+{
+    std::scoped_lock callback_lock(callback_mutex_);
+    if (std::scoped_lock lock(state_machine_mutex_);
+        curr_state_ == State::Offline || curr_state_ == State::Error)
+    {
+        curr_state_ = State::Idle;
+    }
+}
+
 
 void AudioController::audio_finished_callback(const AudioFinishedEvent&)
 {
@@ -392,6 +400,7 @@ void AudioController::state_machine_loop(const std::stop_token& stoken) noexcept
         [this](const PauseEvent& evt) { pause_callback(evt); },
         [this](const ResumeEvent& evt) { resume_callback(evt); },
         [this](const StopEvent& evt) { stop_callback(evt); },
+        [this](const AudioReadyEvent& evt) { audio_ready_callback(evt); },
         [this](const AudioFinishedEvent& evt) { audio_finished_callback(evt); },
         [this](const ShutdownEvent& evt) { shutdown_callback(evt); },
         [this](const AudioErrorEvent& evt) { error_callback(evt); },
