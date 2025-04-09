@@ -16,7 +16,7 @@
 class AudioController
 {
 public:
-    AudioController(std::unique_ptr<EventQueue<Event>>&);
+    explicit AudioController(std::unique_ptr<EventQueue<Event>>&);
     ~AudioController();
     AudioController(const AudioController&) = delete;
     AudioController& operator=(const AudioController&) = delete;

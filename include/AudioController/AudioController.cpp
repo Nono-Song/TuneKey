@@ -52,6 +52,11 @@ void AudioController::start()
         throw std::runtime_error("AudioController::start() failed: Instance running");
     }
 
+    if (!event_queue_)
+    {
+        throw std::runtime_error("AudioController::start() failed: No event_queue");
+    }
+
     // Will only reach here if the current state is Offline, which means no other thread
     // is actively running. (Although state machine thread may haven't joined yet)
     start_audio_thread();
@@ -176,7 +181,7 @@ void AudioController::audio_event_loop(const std::stop_token& stoken)
         lock.unlock();
 
         // Simulate audio playback
-        for (unsigned i = 0; i < duration; i++)
+        for (unsigned i = 0; i < duration && !stoken.stop_requested(); i++)
         {
             // Play a new audio if playback id changes
             if (std::shared_lock l{state_machine_mutex_}; playback_id != curr_playback_id_)
@@ -211,7 +216,9 @@ void AudioController::audio_event_loop(const std::stop_token& stoken)
             }
 
             if (std::shared_lock stop_lock(state_machine_mutex_);
-                curr_state_ == State::Idle || stoken.stop_requested())
+                curr_state_ == State::Idle ||
+                curr_state_ == State::Offline ||
+                stoken.stop_requested())
             {
                 break;
             }
