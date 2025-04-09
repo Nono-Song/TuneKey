@@ -38,9 +38,9 @@ public:
     }
 
 private:
-    static constexpr std::size_t max_size = 128;
-    std::queue<Event> queue_;
-    std::mutex mutex_;
-    std::condition_variable_any nonempty_;
-    std::condition_variable_any notfull_;
+    static constexpr std::size_t max_size = 20;
+    std::queue<Event> queue_{};
+    std::mutex mutex_{};
+    std::condition_variable_any nonempty_{};
+    std::condition_variable_any notfull_{};
 };
