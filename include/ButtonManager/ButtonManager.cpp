@@ -2,71 +2,52 @@
 // Created by Schizoneurax on 3/11/2025.
 //
 
-#include <algorithm>
 #include <stdexcept>
 #include <vector>
 #include <unordered_map>
 #include "ButtonManager.h"
 #include "AudioController.h"
 
-ButtonManager::ButtonManager()
+ButtonManager::ButtonManager() noexcept = default;
+
+Button& ButtonManager::operator[](const identifier_type& id)
 {
-    audio_controller = std::make_unique<AudioController>();
-}
-
-
-ButtonManager::ButtonManager(ButtonManager&& other) noexcept : audio_controller(std::move(other.audio_controller)),
-                                                               button_map(std::move(other.button_map)),
-                                                               button_view(std::move(other.button_view)),
-                                                               name_to_uuid(std::move(other.name_to_uuid)),
-                                                               active_button_(other.active_button_)
-
-
-{
-}
-
-ButtonManager& ButtonManager::operator=(ButtonManager&& other) noexcept
-{
-    button_view = std::move(other.button_view);
-    name_to_uuid = std::move(other.name_to_uuid);
-    button_map = std::move(other.button_map);
-    audio_controller = std::move(other.audio_controller);
-    active_button_ = other.active_button_;
-    return *this;
-}
-
-Button& ButtonManager::operator[](const uuid_t& uuid)
-{
-    return button_map.at(uuid);
+    return button_map.at(id);
 };
 
-ButtonManager::uuid_t ButtonManager::addButton(const name_t& name)
+ButtonManager::identifier_type ButtonManager::addButton(const name_type& name, const filepath_type& filepath)
 {
     if (name_to_uuid.contains(name))
     {
         throw std::invalid_argument("The name already exists");
     }
-    updateUUID();
 
-    auto createButton = [this, &name]()
+    auto new_id = next_id_++;
+    auto createButton = [this, &name, new_id, &filepath]()
     {
-        return Button(getUUID(), name, this, audio_controller.get());
+        return Button(name, new_id, filepath, event_queue_);
     };
 
-    button_map.emplace(getUUID(), createButton());
-    name_to_uuid.emplace(name, getUUID());
-    button_view.emplace_back(getUUID());
+    button_map.emplace(new_id, createButton());
+    name_to_uuid.emplace(name, new_id);
+    button_view.emplace_back(new_id);
 
-    return getUUID();
+    return new_id;
 }
 
 
-void ButtonManager::deleteButton(const uuid_t& uuid)
+void ButtonManager::deleteButton(const identifier_type& target_id)
 {
-    if (const auto nh = button_map.extract(uuid); !nh.empty())
+    if (const auto nh = button_map.extract(target_id); !nh.empty())
     {
         const auto& id = nh.key();
         const auto& btn = nh.mapped();
+
+        if (getActiveButton() == id)
+        {
+            audio_controller->stop();
+            clearActiveButton();
+        }
 
         erase(button_view, id);
         erase_if(name_to_uuid, [&btn](const auto& p)
@@ -76,31 +57,10 @@ void ButtonManager::deleteButton(const uuid_t& uuid)
     }
 }
 
-void ButtonManager::sortBy(const Button::SortKey key, bool reverse)
-{
-    // Why I can't use auto& proj here?
-    std::visit([this, reverse](const auto& proj)
-               {
-                   auto cmp = [reverse](const auto& x, const auto& y)
-                   {
-                       return reverse ? std::greater<>{}(x, y) : std::less<>{}(x, y);
-                   };
-                   auto projector = [this, &proj](const uuid_t id)
-                   {
-                       return proj(button_map.at(id));
-                   };
-                   std::ranges::sort(button_view, cmp, projector
-                   );
-               }
-               ,
-               Button::Projector(key)
-    );
-}
+const std::vector<ButtonManager::identifier_type>& ButtonManager::getView() const { return button_view; }
 
-const std::vector<ButtonManager::uuid_t>& ButtonManager::getView() const { return button_view; }
-
-void ButtonManager::reorder(const std::vector<uuid_t>::difference_type& idx_from,
-                            const std::vector<uuid_t>::difference_type& idx_to)
+void ButtonManager::reorder(const std::vector<identifier_type>::difference_type& idx_from,
+                            const std::vector<identifier_type>::difference_type& idx_to)
 {
     if (idx_from == idx_to)
     {
@@ -112,14 +72,30 @@ void ButtonManager::reorder(const std::vector<uuid_t>::difference_type& idx_from
     button_view.insert(button_view.cbegin() + idx_to, id);
 }
 
-const std::optional<ButtonManager::uuid_t>& ButtonManager::getActiveButton() const
+void ButtonManager::modify_button_name(const identifier_type& id, const name_type& name)
+{
+    modify_button_attr<name_type>(id, name);
+}
+
+void ButtonManager::modify_button_filepath(const identifier_type& id, const filepath_type& path)
+{
+    if (getActiveButton() == id)
+    {
+        audio_controller->stop();
+    }
+
+    modify_button_attr<filepath_type>(id, path);
+}
+
+
+const std::optional<ButtonManager::identifier_type>& ButtonManager::getActiveButton() const
 {
     return active_button_;
 }
 
-void ButtonManager::setActiveButton(const uuid_t& uuid)
+void ButtonManager::setActiveButton(const identifier_type& target_id)
 {
-    active_button_ = uuid;
+    active_button_ = target_id;
 }
 
 void ButtonManager::clearActiveButton()
