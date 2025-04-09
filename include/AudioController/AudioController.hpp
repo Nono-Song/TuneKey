@@ -7,16 +7,16 @@
 #include <thread>
 #include <shared_mutex>
 #include <condition_variable>
-
+#include <optional>
 #include <boost/filesystem.hpp>
 #include <utility>
-#include <variant>
-#include "EventQueue.hpp"
+#include <Event.hpp>
+#include <EventQueue.hpp>
 
 class AudioController
 {
 public:
-    AudioController();
+    AudioController(std::unique_ptr<EventQueue<Event>>&);
     ~AudioController();
     AudioController(const AudioController&) = delete;
     AudioController& operator=(const AudioController&) = delete;
@@ -27,40 +27,18 @@ public:
     void shutdown();
 
     // Change state
-    void play(const boost::filesystem::path& path);
-    void pause();
-    void resume();
-    void stop();
+    void play(const identifier_type id, const boost::filesystem::path& path);
+    void pause(const identifier_type id);
+    void resume(const identifier_type id);
+    void stop(const identifier_type id);
 
 private:
-    // @formatter:off
-    /** Command **/
-    struct PlayEvent
-    {
-        explicit PlayEvent(boost::filesystem::path path): path(std::move(path)) {}
-        boost::filesystem::path path;
-    };
-    struct PauseEvent{};
-    struct ResumeEvent{};
-    struct StopEvent{};
-    struct ShutdownEvent{};
-    struct AudioFinishedEvent{};
-    struct AudioErrorEvent{};
-
-    // @formatter:on
-    using Command = std::variant<PlayEvent,
-                                 PauseEvent, ResumeEvent,
-                                 StopEvent, ShutdownEvent,
-                                 AudioFinishedEvent,
-                                 AudioErrorEvent>;
-
-    template <typename Cmd, typename... Args>
+    template <EventType Cmd, typename... Args>
     void push_event(Args&&... args);
-
-    Command pop_event();
+    Event pop_event();
 
     /** State **/
-    enum class State { Offline, Idle, Play, Pause };
+    enum class State { Error, Offline, Idle, Play, Pause };
 
     // In case of audio error and need to just restart the audio thread...
     void start_audio_thread() noexcept;
@@ -75,6 +53,7 @@ private:
     void pause_callback(const PauseEvent&);
     void resume_callback(const ResumeEvent&);
     void stop_callback(const StopEvent&);
+    void audio_ready_callback(const AudioReadyEvent&);
     void audio_finished_callback(const AudioFinishedEvent&);
     void shutdown_callback(const ShutdownEvent&);
     void error_callback(const AudioErrorEvent&);
@@ -82,19 +61,19 @@ private:
     static constexpr int default_duration{10};
 
     std::stop_source machine_ssource_{};
-    std::unique_ptr<EventQueue<Command>> event_queue_{};
+    std::unique_ptr<EventQueue<Event>>& event_queue_;
     mutable std::shared_mutex state_machine_mutex_{};
     State curr_state_{State::Offline};
     boost::filesystem::path curr_audio_path_{};
-    std::atomic_uint64_t curr_playback_id_{0};
+    std::optional<identifier_type> curr_playback_id_{};
     std::atomic_int duration_{default_duration};
     std::condition_variable_any audio_condition_{};
 
-    std::jthread state_machine_thread_;
+    std::jthread state_machine_thread_{};
     std::jthread audio_thread_{};
 };
 
-template <typename Cmd, typename... Args>
+template <EventType Cmd, typename... Args>
 void AudioController::push_event(Args&&... args)
 {
     if (event_queue_)

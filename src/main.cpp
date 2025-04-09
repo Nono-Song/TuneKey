@@ -8,7 +8,7 @@
 
 #include <fmt/base.h>
 
-#include "AudioController.h"
+#include "AudioController.hpp"
 
 int main()
 {

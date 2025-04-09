@@ -90,7 +90,7 @@ target_link_libraries(Button
         Boost::system)
 
 # AudioController
-add_library(AudioController include/AudioController/AudioController.cpp include/AudioController/AudioController.h)
+add_library(AudioController include/AudioController/AudioController.cpp include/AudioController/AudioController.hpp)
 target_link_libraries(AudioController
         PUBLIC
         EventQueue
