@@ -42,6 +42,8 @@ struct StopEvent
     identifier_type id;
 };
 
+struct AudioReadyEvent {};
+
 struct AudioFinishedEvent
 {
     explicit AudioFinishedEvent(const identifier_type id): id(id) {}
@@ -64,6 +66,7 @@ using Event = std::variant<PlayEvent,
                            PauseEvent,
                            ResumeEvent,
                            StopEvent,
+                           AudioReadyEvent,
                            AudioFinishedEvent,
                            AudioErrorEvent,
                            ShutdownEvent>;
@@ -73,6 +76,7 @@ concept EventType = std::same_as<T, PlayEvent> ||
                     std::same_as<T, ResumeEvent> ||
                     std::same_as<T, PauseEvent> ||
                     std::same_as<T, StopEvent> ||
+                    std::same_as<T, AudioReadyEvent> ||
                     std::same_as<T, ShutdownEvent> ||
                     std::same_as<T, AudioFinishedEvent> ||
                     std::same_as<T, AudioErrorEvent>;
