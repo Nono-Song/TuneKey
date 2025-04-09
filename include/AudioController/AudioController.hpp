@@ -33,7 +33,7 @@ public:
     void stop(const identifier_type id);
 
 private:
-    template <typename Cmd, typename... Args>
+    template <EventType Cmd, typename... Args>
     void push_event(Args&&... args);
     Event pop_event();
 
@@ -74,7 +74,7 @@ private:
     std::jthread audio_thread_{};
 };
 
-template <typename Cmd, typename... Args>
+template <EventType Cmd, typename... Args>
 void AudioController::push_event(Args&&... args)
 {
     if (event_queue_)
