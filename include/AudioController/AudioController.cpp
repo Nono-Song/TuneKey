@@ -247,8 +247,6 @@ void AudioController::reset_playback()
 
 void AudioController::play_callback(const PlayEvent& play_evt)
 {
-    std::scoped_lock callback_lock(callback_mutex_);
-
     // Play a new audio, irrespective of the current state,
     // except the machine has already shutdown, aka. in offline state.
     if (std::scoped_lock l(state_machine_mutex_);
@@ -274,8 +272,6 @@ void AudioController::play_callback(const PlayEvent& play_evt)
 
 void AudioController::pause_callback(const PauseEvent& evt)
 {
-    std::scoped_lock callback_lock(callback_mutex_);
-
     // Pause the playback while keep all metadata.
     // Only makes sense if we are actually playing the audio
     if (std::unique_lock lock(state_machine_mutex_);
@@ -287,8 +283,6 @@ void AudioController::pause_callback(const PauseEvent& evt)
 
 void AudioController::resume_callback(const ResumeEvent& evt)
 {
-    std::scoped_lock callback_lock(callback_mutex_);
-
     // Resume playback. Only makes sense if the playback is actually paused.
     if (std::scoped_lock lock(state_machine_mutex_);
         curr_state_ == State::Pause && curr_playback_id_ == evt.id)
@@ -300,8 +294,6 @@ void AudioController::resume_callback(const ResumeEvent& evt)
 
 void AudioController::stop_callback(const StopEvent& evt)
 {
-    std::scoped_lock callback_lock(callback_mutex_);
-
     // Manually stop the audio. The audio could be playing or paused.
     // After StopEvent, only a PlayEvent or ShutdownEvent will trigger a state change.
     if (std::unique_lock lock(state_machine_mutex_);
@@ -320,7 +312,6 @@ void AudioController::stop_callback(const StopEvent& evt)
 
 void AudioController::audio_ready_callback(const AudioReadyEvent&)
 {
-    std::scoped_lock callback_lock(callback_mutex_);
     if (std::scoped_lock lock(state_machine_mutex_);
         curr_state_ == State::Offline || curr_state_ == State::Error)
     {
@@ -331,8 +322,6 @@ void AudioController::audio_ready_callback(const AudioReadyEvent&)
 
 void AudioController::audio_finished_callback(const AudioFinishedEvent&)
 {
-    std::scoped_lock callback_lock(callback_mutex_);
-
     // Just as the name suggests, AudioFinishEvent should only arrive when the audio
     // has finished playing. Currently, there is no way to know if the audio's truly
     // finished as we only simulate the audio playback here. However, according to the
@@ -350,8 +339,6 @@ void AudioController::audio_finished_callback(const AudioFinishedEvent&)
 
 void AudioController::shutdown_callback(const ShutdownEvent&)
 {
-    std::scoped_lock callback_lock(callback_mutex_);
-
     // Completely shutdown the state machine loop and the audio thread.
     // Need to call start() again to restart.
     if (std::unique_lock lock(state_machine_mutex_);
@@ -375,7 +362,6 @@ void AudioController::shutdown_callback(const ShutdownEvent&)
 
 void AudioController::error_callback(const AudioErrorEvent&)
 {
-    std::scoped_lock callback_lock(callback_mutex_);
     // Add things when we actually implement the audio playback functionality
     // The argument is not used right now but in future it may contain information
     {
@@ -412,6 +398,11 @@ void AudioController::state_machine_loop(const std::stop_token& stoken) noexcept
         {
             auto evt = pop_event();
             std::visit(visit, evt);
+            if (std::shared_lock l(state_machine_mutex_);
+                curr_state_ == State::Offline)
+            {
+                break;
+            }
         }
         catch (std::exception& e)
         {
