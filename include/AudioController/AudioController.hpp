@@ -9,9 +9,10 @@
 #include <condition_variable>
 #include <optional>
 #include <boost/filesystem.hpp>
-#include <utility>
 #include <Event.hpp>
-#include <EventQueue.hpp>
+
+template <typename T>
+class EventQueue;
 
 class AudioController
 {
@@ -27,14 +28,14 @@ public:
     void shutdown();
 
     // Change state
-    void play(const identifier_type id, const boost::filesystem::path& path);
-    void pause(const identifier_type id);
-    void resume(const identifier_type id);
-    void stop(const identifier_type id);
+    void play(identifier_type id, const boost::filesystem::path& path);
+    void pause(identifier_type id);
+    void resume(identifier_type id);
+    void stop(identifier_type id);
+
+    std::optional<identifier_type> active_button() const;
 
 private:
-    template <EventType Cmd, typename... Args>
-    void push_event(Args&&... args);
     Event pop_event();
 
     /** State **/
@@ -65,6 +66,7 @@ private:
     mutable std::shared_mutex state_machine_mutex_{};
     State curr_state_{State::Offline};
     boost::filesystem::path curr_audio_path_{};
+    std::optional<identifier_type> curr_active_button_{};
     std::optional<identifier_type> curr_playback_id_{};
     std::atomic_int duration_{default_duration};
     std::condition_variable_any audio_condition_{};
@@ -72,16 +74,6 @@ private:
     std::jthread state_machine_thread_{};
     std::jthread audio_thread_{};
 };
-
-template <EventType Cmd, typename... Args>
-void AudioController::push_event(Args&&... args)
-{
-    if (event_queue_)
-    {
-        return event_queue_->push(Cmd{std::forward<Args>(args)...});
-    }
-    throw QueueStoppedException{};
-}
 
 
 #endif //AUDIOCONTROLLER_H
