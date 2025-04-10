@@ -301,37 +301,36 @@ void AudioController::play_callback(const PlayEvent& play_evt)
     }
 }
 
-void AudioController::pause_callback(const PauseEvent& evt)
+void AudioController::pause_callback(const PauseEvent&)
 {
     // Pause the playback while keep all metadata.
     // Only makes sense if we are actually playing the audio
     if (std::unique_lock lock(state_machine_mutex_);
-        curr_state_ == State::Play && curr_playback_id_ == evt.id)
+        curr_state_ == State::Play)
     {
         curr_state_ = State::Pause;
     }
 }
 
-void AudioController::resume_callback(const ResumeEvent& evt)
+void AudioController::resume_callback(const ResumeEvent&)
 {
     // Resume playback. Only makes sense if the playback is actually paused.
     if (std::scoped_lock lock(state_machine_mutex_);
-        curr_state_ == State::Pause && curr_playback_id_ == evt.id)
+        curr_state_ == State::Pause)
     {
         curr_state_ = State::Play;
         audio_condition_.notify_one();
     }
 }
 
-void AudioController::stop_callback(const StopEvent& evt)
+void AudioController::stop_callback(const StopEvent&)
 {
     // Manually stop the audio. The audio could be playing or paused.
     // After StopEvent, only a PlayEvent or ShutdownEvent will trigger a state change.
     if (std::unique_lock lock(state_machine_mutex_);
         curr_state_ != State::Idle &&
         curr_state_ != State::Offline &&
-        curr_state_ != State::Error &&
-        curr_playback_id_ == evt.id)
+        curr_state_ != State::Error)
     {
         // reset_playback(); Not necessary. A new PlayEvent will do that.
         curr_state_ = State::Idle;
