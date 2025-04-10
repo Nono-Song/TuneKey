@@ -2,12 +2,12 @@
 // Created by Schizoneurax on 3/12/2025.
 //
 #pragma once
-#include <EventQueue.hpp>
+#include <Event.hpp>
 #include <string>
+#include <AudioController.h>
 #include <variant>
 #include <concepts>
 #include <boost/filesystem.hpp>
-#include <Event.hpp>
 
 template <typename... T>
 constexpr bool always_false = false;
@@ -40,20 +40,28 @@ concept ButtonAttrArg = std::assignable_from<name_type&, T> || std::assignable_f
 
 class Button
 {
-    // Make friend with ButtonManager voids the meaning of my complex projector functions...
-    // But maybe some other code will make uses of them?
-    friend class ButtonManager;
-
 public:
     using event_type = Event;
     using event_queue = EventQueue<event_type>;
 
     /** Ctor, Dtor and Copy Control **/
-    Button(const name_type&, const identifier_type& id, std::unique_ptr<event_queue>& queue);
-    Button(name_type name, const identifier_type& id, filename_type path, std::unique_ptr<event_queue>& queue);
+    Button(const name_type& name, const identifier_type id, AudioController* controller)
+        : Button(name, id, "", controller)
+    {
+    }
 
-    ~Button() noexcept;
-    Button(Button&& other) noexcept;
+    Button(name_type name, const identifier_type id, filename_type path, AudioController* controller)
+        : controller_(controller), name_(std::move(name)), id_(id), file_path_(std::move(path))
+    {
+    }
+
+    Button(Button&& other) noexcept
+        : controller_(other.controller_), name_{std::move(other.name_)}, id_{other.id_},
+          file_path_{std::move(other.file_path_)}
+    {
+    }
+
+    virtual ~Button() noexcept = default;
     Button(const Button& other) = delete;
     Button& operator=(const Button& other) = delete;
     Button& operator=(Button&& other) = delete;
@@ -85,11 +93,14 @@ public:
     template <ButtonAttr Attr, ButtonAttrArg S>
     void modify(S&& arg);
 
+    virtual void interact() = 0;
+
+protected:
     template <ButtonEvent Evt>
-    void handleEvent() const;
+    void handleEvent();
 
 private:
-    std::unique_ptr<event_queue>& event_queue_;
+    AudioController* controller_;
     // Todo: Time of creation
     // Todo: Time of last usage
     name_type name_;
@@ -154,18 +165,23 @@ Button::ProjVariant Button::Projector()
 }
 
 template <ButtonEvent Evt>
-void Button::handleEvent() const
+void Button::handleEvent()
 {
     if constexpr (std::is_same_v<Evt, PlayEvent>)
     {
-        event_queue_->push(Evt{id_, file_path_});
+        controller_->play(id, file_path_);
     }
-    else if constexpr (
-        std::is_same_v<Evt, PauseEvent> ||
-        std::is_same_v<Evt, ResumeEvent> ||
-        std::is_same_v<Evt, StopEvent>)
+    else if constexpr (std::is_same_v<Evt, PauseEvent>)
     {
-        event_queue_->push(Evt{id_});
+        controller_->pause();
+    }
+    else if constexpr (std::is_same_v<Evt, ResumeEvent>)
+    {
+        controller_->resume();
+    }
+    else if constexpr (std::is_same_v<Evt, StopEvent>)
+    {
+        controller_->stop();
     }
     else
     {

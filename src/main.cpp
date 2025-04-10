@@ -1,7 +1,7 @@
 #include <string>
 #include <SDL3/SDL.h>
 #include <fmt/base.h>
-#include <Button.h>
+#include <Button.hpp>
 #include <ButtonManager.h>
 #include <EventQueue.hpp>
 #include <iostream>
