@@ -2,78 +2,25 @@
 // Created by Schizoneurax on 3/18/2025.
 //
 
-#ifndef AUDIOCONTROLLER_H
-#define AUDIOCONTROLLER_H
-#include <thread>
-#include <shared_mutex>
-#include <condition_variable>
-#include <optional>
-#include <boost/filesystem.hpp>
+#pragma once
 #include <Event.hpp>
+#include <memory>
 
-template <typename T>
-class EventQueue;
-
-class AudioController
+//@formatter:off
+struct AudioController
 {
-public:
-    explicit AudioController(std::unique_ptr<EventQueue<Event>>&);
-    ~AudioController();
-    AudioController(const AudioController&) = delete;
-    AudioController& operator=(const AudioController&) = delete;
-    AudioController(AudioController&&) = delete;
-    AudioController& operator=(AudioController&&) = delete;
+    virtual ~AudioController(){}
 
-    void start();
-    void shutdown();
+    virtual void start() = 0;
+    virtual void shutdown() = 0;
 
     // Change state
-    void play(identifier_type id, const boost::filesystem::path& path);
-    void pause(identifier_type id);
-    void resume(identifier_type id);
-    void stop(identifier_type id);
+    virtual void play(identifier_type, const boost::filesystem::path&) = 0;
+    virtual void pause(identifier_type) = 0;
+    virtual void resume(identifier_type) = 0;
+    virtual void stop(identifier_type) = 0;
 
-    std::optional<identifier_type> active_button() const;
+    virtual std::optional<identifier_type> active_button() const = 0;
 
-private:
-    Event pop_event();
-
-    /** State **/
-    enum class State { Error, Offline, Idle, Play, Pause };
-
-    // In case of audio error and need to just restart the audio thread...
-    void start_audio_thread() noexcept;
-    // Audio thread main loop
-    void audio_event_loop(const std::stop_token&);
-    void state_machine_loop(const std::stop_token& stoken) noexcept;
-
-    void reset_playback();
-
-    // State change callback functions
-    void play_callback(const PlayEvent&);
-    void pause_callback(const PauseEvent&);
-    void resume_callback(const ResumeEvent&);
-    void stop_callback(const StopEvent&);
-    void audio_ready_callback(const AudioReadyEvent&);
-    void audio_finished_callback(const AudioFinishedEvent&);
-    void shutdown_callback(const ShutdownEvent&);
-    void error_callback(const AudioErrorEvent&);
-
-    static constexpr int default_duration{10};
-
-    std::stop_source machine_ssource_{};
-    std::unique_ptr<EventQueue<Event>>& event_queue_;
-    mutable std::shared_mutex state_machine_mutex_{};
-    State curr_state_{State::Offline};
-    boost::filesystem::path curr_audio_path_{};
-    std::optional<identifier_type> curr_active_button_{};
-    std::optional<identifier_type> curr_playback_id_{};
-    std::atomic_int duration_{default_duration};
-    std::condition_variable_any audio_condition_{};
-
-    std::jthread state_machine_thread_{};
-    std::jthread audio_thread_{};
+    static std::unique_ptr<AudioController> create();
 };
-
-
-#endif //AUDIOCONTROLLER_H
