@@ -93,13 +93,11 @@ add_library(AudioButton INTERFACE include/Button/SpecialButtons.hpp)
 target_include_directories(AudioButton INTERFACE include/Button)
 target_link_libraries(AudioButton INTERFACE Button)
 
-
 # AudioController
 add_library(AudioController  include/AudioController/AudioController.cpp include/AudioController/AudioController.hpp)
-target_include_directories(AudioController PRIVATE include/EventQueue)
-target_link_libraries(AudioController PUBLIC EventQueue Event PRIVATE AudioControllerImpl)
+target_link_libraries(AudioController PRIVATE AudioControllerImpl)
 
 add_library(AudioControllerImpl include/AudioController/AudioControllerImpl.cpp include/AudioController/AudioControllerImpl.hpp)
-target_include_directories(AudioControllerImpl PRIVATE include/EventQueue)
-target_link_libraries(AudioControllerImpl PRIVATE EventQueue Event)
+target_include_directories(AudioControllerImpl PUBLIC include/EventQueue)
+target_link_libraries(AudioControllerImpl PUBLIC EventQueue Event)
 
