@@ -2,7 +2,7 @@
 // Created by Schizoneurax on 4/10/2025.
 //
 #include "Button.hpp"
-#include <AudioController.h>
+#include <AudioController.hpp>
 
 Button::Button(const name_type& name, const identifier_type id, AudioController* controller)
     : Button(name, id, "", controller)
