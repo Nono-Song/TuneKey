@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <Button.hpp>
 
-#include "AudioController.h"
+#include "AudioController.hpp"
 
 class AudioController;
 template <typename T>

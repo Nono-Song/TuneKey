@@ -6,7 +6,7 @@
 #include <vector>
 #include <unordered_map>
 #include "ButtonManager.h"
-#include "AudioController.h"
+#include "AudioController.hpp"
 
 ButtonManager::ButtonManager() noexcept = default;
 

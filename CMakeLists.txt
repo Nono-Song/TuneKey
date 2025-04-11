@@ -95,13 +95,11 @@ target_link_libraries(AudioButton INTERFACE Button)
 
 
 # AudioController
-add_library(AudioController include/AudioController/AudioController.cpp include/AudioController/AudioController.h)
-target_link_libraries(AudioController
-        PUBLIC
-        EventQueue
-        PRIVATE
-        fmt::fmt
-        Boost::filesystem
-        Boost::system
-        SDL3::SDL3
-)
+add_library(AudioController  include/AudioController/AudioController.cpp include/AudioController/AudioController.hpp)
+target_include_directories(AudioController PRIVATE include/EventQueue)
+target_link_libraries(AudioController PUBLIC EventQueue Event PRIVATE AudioControllerImpl)
+
+add_library(AudioControllerImpl include/AudioController/AudioControllerImpl.cpp include/AudioController/AudioControllerImpl.hpp)
+target_include_directories(AudioControllerImpl PRIVATE include/EventQueue)
+target_link_libraries(AudioControllerImpl PRIVATE EventQueue Event)
+
