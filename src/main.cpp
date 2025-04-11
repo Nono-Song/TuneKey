@@ -1,58 +1,56 @@
 #include <string>
-#include <SDL3/SDL.h>
 #include <fmt/base.h>
-#include <Button.hpp>
-#include <ButtonManager.h>
-#include <EventQueue.hpp>
 #include <iostream>
-
-#include <fmt/base.h>
-
 #include "AudioController.hpp"
 
-int main()
+void testAudioController()
 {
-    AudioController controller;
-    controller.start();
+    const auto controller = AudioController::create();
+    controller->start();
 
     std::string input;
+    identifier_type id{0};
     while (std::cin >> input)
     {
+        if (input == "play")
+        {
+            std::cin >> id;
+        }
         fmt::print("Input: {}\n", input);
 
         try
         {
             if (input == "start")
             {
-                controller.start();
+                controller->start();
             }
             if (input == "exit")
             {
-                return 0;
+                return;
             }
             if (input == "stop")
             {
-                controller.stop();
+                controller->stop(id);
             }
 
             if (input == "shutdown")
             {
-                controller.shutdown();
+                controller->shutdown();
             }
 
             if (input == "play")
             {
-                controller.play("");
+                controller->play(id, "");
             }
 
             if (input == "pause")
             {
-                controller.pause();
+                controller->pause(id);
             }
 
             if (input == "resume")
             {
-                controller.resume();
+                controller->resume(id);
             }
         }
         catch (std::exception& e)
@@ -60,5 +58,10 @@ int main()
             fmt::print("Toplevel: {}\n", e.what());
         }
     }
+}
+
+int main()
+{
+    testAudioController();
     return 0;
 }
