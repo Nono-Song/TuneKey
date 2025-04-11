@@ -76,21 +76,21 @@ target_link_libraries(ButtonManager
         Boost::system)
 
 # Button
-add_library(Button INTERFACE include/Button/Button.hpp)
+add_library(Button include/Button/Button.hpp include/Button/Button.cpp)
 target_include_directories(Button
-        INTERFACE
+        PRIVATE
         include/AudioController
         include/EventQueue)
 target_link_libraries(Button
-        INTERFACE
+        PUBLIC
         Event
         AudioController
+        PRIVATE
         Boost::filesystem
         Boost::system)
 
 #AudioButton
 add_library(AudioButton INTERFACE include/Button/SpecialButtons.hpp)
-target_include_directories(AudioButton INTERFACE include/Button)
 target_link_libraries(AudioButton INTERFACE Button)
 
 
