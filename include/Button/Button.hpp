@@ -8,7 +8,7 @@
 #include <concepts>
 #include <boost/filesystem.hpp>
 
-class AudioController;
+struct AudioController;
 
 template <typename T>
 concept Identifier = std::same_as<T, identifier_type>;

@@ -22,25 +22,24 @@ Button::Button(Button&& other) noexcept
 
 Button::~Button() noexcept = default;
 
-
 template <ButtonEvent Evt>
 void Button::handleEvent() const
 {
     if constexpr (std::is_same_v<Evt, PlayEvent>)
     {
-        controller_->play(file_path_);
+        controller_->play(id_, file_path_);
     }
     else if constexpr (std::is_same_v<Evt, PauseEvent>)
     {
-        controller_->pause();
+        controller_->pause(id_);
     }
     else if constexpr (std::is_same_v<Evt, ResumeEvent>)
     {
-        controller_->resume();
+        controller_->resume(id_);
     }
     else if constexpr (std::is_same_v<Evt, StopEvent>)
     {
-        controller_->stop();
+        controller_->stop(id_);
     }
     else
     {
@@ -74,23 +73,16 @@ Button::ProjVariant Button::Projector()
     }
 }
 
-template <>
-void Button::handleEvent<PlayEvent>() const;
+template void Button::handleEvent<PlayEvent>() const;
 
-template <>
-void Button::handleEvent<PauseEvent>() const;
+template void Button::handleEvent<PauseEvent>() const;
 
-template <>
-void Button::handleEvent<ResumeEvent>() const;
+template void Button::handleEvent<ResumeEvent>() const;
 
-template <>
-void Button::handleEvent<StopEvent>() const;
+template void Button::handleEvent<StopEvent>() const;
 
-template <>
-Button::ProjVariant Button::Projector<identifier_type>();
+template Button::ProjVariant Button::Projector<identifier_type>();
 
-template <>
-Button::ProjVariant Button::Projector<name_type>();
+template Button::ProjVariant Button::Projector<name_type>();
 
-template <>
-Button::ProjVariant Button::Projector<filename_type>();
+template Button::ProjVariant Button::Projector<filename_type>();
