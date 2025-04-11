@@ -9,7 +9,7 @@
 //@formatter:off
 struct AudioController
 {
-    virtual ~AudioController(){}
+    virtual ~AudioController();
 
     virtual void start() = 0;
     virtual void shutdown() = 0;
@@ -20,7 +20,7 @@ struct AudioController
     virtual void resume(identifier_type) = 0;
     virtual void stop(identifier_type) = 0;
 
-    virtual std::optional<identifier_type> active_button() const = 0;
+    [[nodiscard]] virtual std::optional<identifier_type> active_button() const = 0;
 
     static std::unique_ptr<AudioController> create();
 };

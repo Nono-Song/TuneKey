@@ -7,6 +7,7 @@
 #include <thread>
 #include <shared_mutex>
 #include <condition_variable>
+#include <future>
 #include <optional>
 #include <boost/filesystem.hpp>
 #include "AudioController.hpp"
@@ -70,6 +71,7 @@ private:
     std::optional<identifier_type> curr_playback_id_{};
     std::atomic_int duration_{default_duration};
     std::condition_variable_any audio_condition_{};
+    std::promise<void> audio_ready_{};
 
     std::jthread state_machine_thread_{};
     std::jthread audio_thread_{};

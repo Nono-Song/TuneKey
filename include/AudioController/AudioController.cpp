@@ -4,7 +4,8 @@
 
 #include "AudioController.hpp"
 #include "AudioControllerImpl.hpp"
-#include <EventQueue.hpp>
+
+AudioController::~AudioController() = default;
 
 std::unique_ptr<AudioController> AudioController::create()
 {

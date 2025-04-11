@@ -9,17 +9,17 @@
 class PlayButton final : public Button
 {
 public:
-    PlayButton::PlayButton(const name_type& name, const identifier_type id, AudioController* controller)
+    PlayButton(const name_type& name, const identifier_type id, AudioController* controller)
         : Button(name, id, "", controller)
     {
     }
 
-    PlayButton::PlayButton(name_type name, const identifier_type id, filename_type path, AudioController* controller)
+    PlayButton(name_type name, const identifier_type id, filename_type path, AudioController* controller)
         : Button(std::move(name), id, std::move(path), controller)
     {
     }
 
-    PlayButton::PlayButton(PlayButton&& other) noexcept
+    PlayButton(PlayButton&& other) noexcept
         : Button(std::move(other))
     {
     }
@@ -30,12 +30,12 @@ public:
 class PauseButton final : public Button
 {
 public:
-    PauseButton::PauseButton(const name_type& name, const identifier_type id, AudioController* controller)
+    PauseButton(const name_type& name, const identifier_type id, AudioController* controller)
         : Button(name, id, "", controller)
     {
     }
 
-    PauseButton::PauseButton(PauseButton&& other) noexcept
+    PauseButton(PauseButton&& other) noexcept
         : Button(std::move(other))
     {
     }

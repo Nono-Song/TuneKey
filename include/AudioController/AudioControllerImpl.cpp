@@ -31,7 +31,7 @@ AudioControllerImpl::~AudioControllerImpl()
     if (std::shared_lock l(state_machine_mutex_); curr_state_ != State::Offline)
     {
         l.unlock();
-        shutdown();
+        AudioControllerImpl::shutdown();
     }
 }
 
@@ -43,6 +43,25 @@ Event AudioControllerImpl::pop_event()
     }
 
     throw std::runtime_error("Event queue not initialized!");
+}
+
+void AudioControllerImpl::start_audio_thread() noexcept
+{
+    machine_ssource_ = {};
+    audio_ready_ = std::promise<void>{};
+    curr_playback_id_ = 0;
+    curr_active_button_.reset();
+    audio_thread_ = std::jthread([this](const std::stop_token& stoken)
+    {
+        try { audio_event_loop(stoken); }
+        catch (std::exception& e)
+        {
+            event_queue_->push(AudioErrorEvent{
+                std::nullopt,
+                "playAudioLoop: " + std::string(e.what()) + "\n"
+            });
+        }
+    });
 }
 
 void AudioControllerImpl::start()
@@ -61,9 +80,6 @@ void AudioControllerImpl::start()
     // is actively running. (Although state machine thread may haven't joined yet)
     start_audio_thread();
 
-    // reset the stop source state in case of re-start
-    machine_ssource_ = {};
-
     state_machine_thread_ = std::jthread{
         [this](const std::stop_token& stoken)
         {
@@ -77,6 +93,8 @@ void AudioControllerImpl::start()
             state_machine_loop(machine_ssource_.get_token());
         }
     };
+
+    audio_ready_.get_future().wait();
 }
 
 void AudioControllerImpl::shutdown()
@@ -135,23 +153,6 @@ std::optional<identifier_type> AudioControllerImpl::active_button() const
 {
     std::shared_lock l{state_machine_mutex_};
     return curr_active_button_;
-}
-
-void AudioControllerImpl::start_audio_thread() noexcept
-{
-    curr_playback_id_ = 0;
-    curr_active_button_.reset();
-    audio_thread_ = std::jthread([this](const std::stop_token& stoken)
-    {
-        try { audio_event_loop(stoken); }
-        catch (std::exception& e)
-        {
-            event_queue_->push(AudioErrorEvent{
-                std::nullopt,
-                "playAudioLoop: " + std::string(e.what()) + "\n"
-            });
-        }
-    });
 }
 
 void AudioControllerImpl::audio_event_loop(const std::stop_token& stoken)
@@ -347,6 +348,7 @@ void AudioControllerImpl::audio_ready_callback(const AudioReadyEvent&)
         curr_state_ == State::Offline || curr_state_ == State::Error)
     {
         curr_state_ = State::Idle;
+        audio_ready_.set_value();
     }
 }
 
