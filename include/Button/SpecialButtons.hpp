@@ -4,45 +4,43 @@
 
 #pragma once
 
-#include <Button.hpp>
-#include <utility>
-
+#include "Button.hpp"
 
 class PlayButton final : public Button
 {
 public:
-    PlayButton::PlayButton(const name_type& name, const identifier_type id, AudioController* controller)
+    PlayButton(const name_type& name, const identifier_type id, AudioController* controller)
         : Button(name, id, "", controller)
     {
     }
 
-    PlayButton::PlayButton(name_type name, const identifier_type id, filename_type path, AudioController* controller)
+    PlayButton(name_type name, const identifier_type id, filename_type path, AudioController* controller)
         : Button(std::move(name), id, std::move(path), controller)
     {
     }
 
-    PlayButton::PlayButton(PlayButton&& other) noexcept
+    PlayButton(PlayButton&& other) noexcept
         : Button(std::move(other))
     {
     }
 
-    void interact() override { handleEvent<PlayEvent>(); };
+    void interact() const override { handleEvent<PlayEvent>(); }
 };
 
 class PauseButton final : public Button
 {
 public:
-    PauseButton::PauseButton(const name_type& name, const identifier_type id, AudioController* controller)
+    PauseButton(const name_type& name, const identifier_type id, AudioController* controller)
         : Button(name, id, "", controller)
     {
     }
 
-    PauseButton::PauseButton(PauseButton&& other) noexcept
+    PauseButton(PauseButton&& other) noexcept
         : Button(std::move(other))
     {
     }
 
-    void interact() override { handleEvent<PauseEvent>(); };
+    void interact() const override { handleEvent<PauseEvent>(); }
 };
 
 class ResumeButton final : public Button
@@ -58,7 +56,7 @@ public:
     {
     }
 
-    void interact() override { handleEvent<ResumeEvent>(); };
+    void interact() const override { handleEvent<ResumeEvent>(); }
 };
 
 class StopButton final : public Button
@@ -73,5 +71,5 @@ public:
     {
     }
 
-    void interact() override { handleEvent<StopEvent>(); };
+    void interact() const override { handleEvent<StopEvent>(); }
 };
