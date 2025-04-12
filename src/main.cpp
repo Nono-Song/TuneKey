@@ -1,6 +1,8 @@
 #include <string>
 #include <fmt/base.h>
 #include <iostream>
+#include <thread>
+#include <cassert>
 #include "AudioController.hpp"
 #include "SpecialButtons.hpp"
 
@@ -55,7 +57,7 @@ struct MockAudioController : public AudioController
     {
     }
 
-    void play(identifier_type id, const boost::filesystem::path& path) override
+    void play(identifier_type id, const filename_type& path) override
     {
         fmt::println("{}: {}", id, path.string());
     }
@@ -72,7 +74,7 @@ struct MockAudioController : public AudioController
     {
     }
 
-    std::optional<identifier_type> active_button() const override { return std::nullopt; }
+    [[nodiscard]] std::optional<identifier_type> active_button() const override { return std::nullopt; }
 };
 
 void button_test_worker()
@@ -90,7 +92,7 @@ void button_test_worker()
     assert(button.getFilePath().empty());
 
     button.modify<filename_type>("testpath.txt");
-    assert(button.getFilePath() == "testpath.txt");
+    assert(button.getFilePath().string() == "testpath.txt");
 
     button.modify<name_type>("name");
     assert(button.getName() == "name");

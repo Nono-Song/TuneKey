@@ -24,7 +24,7 @@ public:
     {
     }
 
-    void interact() const override { handleEvent<PlayEvent>(); };
+    void interact() const override { handleEvent<PlayEvent>(); }
 };
 
 class PauseButton final : public Button
@@ -40,7 +40,7 @@ public:
     {
     }
 
-    void interact() const override { handleEvent<PauseEvent>(); };
+    void interact() const override { handleEvent<PauseEvent>(); }
 };
 
 class ResumeButton final : public Button
@@ -56,7 +56,7 @@ public:
     {
     }
 
-    void interact() const override { handleEvent<ResumeEvent>(); };
+    void interact() const override { handleEvent<ResumeEvent>(); }
 };
 
 class StopButton final : public Button
@@ -71,5 +71,5 @@ public:
     {
     }
 
-    void interact() const override { handleEvent<StopEvent>(); };
+    void interact() const override { handleEvent<StopEvent>(); }
 };
