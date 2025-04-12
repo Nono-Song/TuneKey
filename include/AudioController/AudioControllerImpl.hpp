@@ -9,7 +9,6 @@
 #include <condition_variable>
 #include <future>
 #include <optional>
-#include <boost/filesystem.hpp>
 #include "AudioController.hpp"
 
 template <typename T>
@@ -29,7 +28,7 @@ public:
     void shutdown() override;
 
     // Change state
-    void play(identifier_type id, const boost::filesystem::path& path) override;
+    void play(identifier_type id, const filename_type& path) override;
     void pause(identifier_type id) override;
     void resume(identifier_type id) override;
     void stop(identifier_type id) override;
@@ -66,7 +65,7 @@ private:
     std::unique_ptr<EventQueue<Event>> event_queue_;
     mutable std::shared_mutex state_machine_mutex_{};
     State curr_state_{State::Offline};
-    boost::filesystem::path curr_audio_path_{};
+    filename_type curr_audio_path_{};
     std::optional<identifier_type> curr_active_button_{};
     std::optional<identifier_type> curr_playback_id_{};
     std::atomic_int duration_{default_duration};

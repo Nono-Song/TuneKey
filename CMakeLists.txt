@@ -30,7 +30,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
 # External Libraries
 find_package(fmt CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
-find_package(Boost CONFIG REQUIRED COMPONENTS filesystem system)
 
 # Main executable
 add_executable(${PROJECT_NAME} src/main.cpp)
@@ -58,7 +57,6 @@ target_include_directories(EventQueue INTERFACE include/EventQueue)
 
 add_library(Event INTERFACE)
 target_include_directories(Event INTERFACE include/EventQueue)
-target_link_libraries(Event INTERFACE Boost::filesystem Boost::system)
 
 # ButtonManager
 add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.h)
@@ -71,9 +69,7 @@ target_link_libraries(ButtonManager
         PRIVATE
         Button
         Event
-        AudioController
-        Boost::filesystem
-        Boost::system)
+        AudioController)
 
 # Button
 add_library(Button include/Button/Button.hpp include/Button/Button.cpp)
@@ -84,10 +80,8 @@ target_include_directories(Button
 target_link_libraries(Button
         PUBLIC
         Event
-        AudioController
-        PRIVATE
-        Boost::filesystem
-        Boost::system)
+        AudioController)
+
 
 #AudioButton
 add_library(AudioButton INTERFACE include/Button/SpecialButtons.hpp)
@@ -99,5 +93,5 @@ target_link_libraries(AudioController PRIVATE AudioControllerImpl)
 
 add_library(AudioControllerImpl include/AudioController/AudioControllerImpl.cpp include/AudioController/AudioControllerImpl.hpp)
 target_include_directories(AudioControllerImpl PUBLIC include/EventQueue)
-target_link_libraries(AudioControllerImpl PUBLIC EventQueue Event)
+target_link_libraries(AudioControllerImpl PUBLIC EventQueue Event fmt::fmt)
 
