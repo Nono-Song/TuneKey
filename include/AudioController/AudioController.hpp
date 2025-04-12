@@ -15,7 +15,7 @@ struct AudioController
     virtual void shutdown() = 0;
 
     // Change state
-    virtual void play(identifier_type, const boost::filesystem::path&) = 0;
+    virtual void play(identifier_type, const filename_type&) = 0;
     virtual void pause(identifier_type) = 0;
     virtual void resume(identifier_type) = 0;
     virtual void stop(identifier_type) = 0;

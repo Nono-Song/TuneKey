@@ -5,6 +5,7 @@
 #include "AudioControllerImpl.hpp"
 #include <chrono>
 #include <fmt/base.h>
+#include <cassert>
 #include "EventQueue.hpp"
 
 using namespace std::literals::chrono_literals;
@@ -87,7 +88,7 @@ void AudioControllerImpl::start()
             // Is there a way to let the created thread use the machine_ssource directly?
             std::stop_callback cb{
                 stoken,
-                [this]() { machine_ssource_.request_stop(); }
+                [this] { return machine_ssource_.request_stop(); }
             };
             // state_machine_loop doesn't throw exception
             state_machine_loop(machine_ssource_.get_token());
@@ -113,7 +114,7 @@ void AudioControllerImpl::shutdown()
     }
 }
 
-void AudioControllerImpl::play(const identifier_type id, const boost::filesystem::path& path)
+void AudioControllerImpl::play(const identifier_type id, const filename_type& path)
 {
     if (std::shared_lock l(state_machine_mutex_);
         curr_state_ != State::Offline)
@@ -168,7 +169,7 @@ void AudioControllerImpl::audio_event_loop(const std::stop_token& stoken)
     while (!stoken.stop_requested())
     {
         std::shared_lock lock(state_machine_mutex_);
-        audio_condition_.wait(lock, stoken, [this]()
+        audio_condition_.wait(lock, stoken, [this]
         {
             return curr_state_ == State::Play && curr_playback_id_;
         });
@@ -217,7 +218,7 @@ void AudioControllerImpl::audio_event_loop(const std::stop_token& stoken)
             {
                 fmt::print("Audio paused...\n");
 
-                audio_condition_.wait(pause_lock, stoken, [this]()
+                audio_condition_.wait(pause_lock, stoken, [this]
                 {
                     return curr_state_ != State::Pause;
                 });
@@ -256,7 +257,7 @@ void AudioControllerImpl::audio_event_loop(const std::stop_token& stoken)
             // Re-enter the loop only if state has been changed to idle
             if (state_lock.lock(); curr_state_ == State::Play)
             {
-                audio_condition_.wait(state_lock, stoken, [this]()
+                audio_condition_.wait(state_lock, stoken, [this]
                 {
                     return curr_state_ != State::Play;
                 });
