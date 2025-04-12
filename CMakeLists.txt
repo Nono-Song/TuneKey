@@ -30,7 +30,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
 # External Libraries
 find_package(fmt CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
-find_package(Boost CONFIG REQUIRED COMPONENTS filesystem system)
 
 # Main executable
 add_executable(${PROJECT_NAME} src/main.cpp)
@@ -59,7 +58,6 @@ target_include_directories(EventQueue INTERFACE include/EventQueue)
 
 add_library(Event INTERFACE)
 target_include_directories(Event INTERFACE include/EventQueue)
-target_link_libraries(Event INTERFACE Boost::filesystem Boost::system)
 
 # ButtonManager
 add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.h)
