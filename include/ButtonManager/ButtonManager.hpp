@@ -45,8 +45,6 @@ public:
     void modify_name(identifier_type id, const name_type& name);
     void modify_filename(identifier_type id, filename_type&& filename);
     void modify_filename(identifier_type id, const filename_type& filename);
-    void modify_filename(identifier_type id, const std::string& filename);
-    void modify_filename(identifier_type id, std::string&& filename);
     void modify_filename(identifier_type id, const char* filename);
 
     template <ButtonAttr Key = identifier_type>
@@ -59,7 +57,7 @@ public:
                    {
                        auto cmp = [reverse](const auto& x, const auto& y)
                        {
-                           return reverse ? std::greater<>{}(x, y) : std::less<>{}(x, y);
+                           return reverse ? std::greater{}(x, y) : std::less{}(x, y);
                        };
                        auto projector = [this, &proj](const identifier_type id)
                        {

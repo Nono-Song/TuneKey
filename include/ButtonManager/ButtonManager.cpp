@@ -15,7 +15,7 @@ ButtonManager::~ButtonManager() = default;
 const Button& ButtonManager::operator[](const identifier_type id) const
 {
     return *button_map.at(id);
-};
+}
 
 identifier_type ButtonManager::addButton(name_type name, filename_type filepath)
 {
@@ -150,16 +150,6 @@ void ButtonManager::modify_filename(const identifier_type id, filename_type&& fi
 void ButtonManager::modify_filename(const identifier_type id, const filename_type& filename)
 {
     modify_button_filepath(id, filename);
-}
-
-void ButtonManager::modify_filename(const identifier_type id, const std::string& filename)
-{
-    modify_button_filepath(id, filename);
-}
-
-void ButtonManager::modify_filename(const identifier_type id, std::string&& filename)
-{
-    modify_button_filepath(id, std::move(filename));
 }
 
 void ButtonManager::modify_filename(const identifier_type id, const char* filename)
