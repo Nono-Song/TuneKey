@@ -13,16 +13,16 @@ if (MSVC)
     set(GCC_COVERAGE_COMPILE_FLAGS "/W4 /Zi /MDd /utf-8")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fsanitize=address")
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(GCC_COVERAGE_COMPILE_FLAGS "-Wall -Wextra -Wpedantic")
+    set(GCC_COVERAGE_COMPILE_FLAGS "-Wall -Wextra -Wpedantic -pedantic-errors -fexperimental-library -fsanitize=address,undefined")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
 elseif (CMAKE_CXX_PLATFORM_ID STREQUAL "Linux")
     set(DBoost_DIR "home/noelucille/boost_1_87_0/stage/lib/cmake/Boost-1.87_0")
     set(GCC_COVERAGE_COMPILE_FLAGS
             "-Wall -Wextra -Wnrvo -Wpedantic -pedantic-errors -fdiagnostics-all-candidates")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
-elseif (CMAKE_CXX_PLATFORM_ID STREQUAL "MinGW")
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     set(GCC_COVERAGE_COMPILE_FLAGS
-            "-Wall -Wextra -Wnrvo -Wpedantic -pedantic-errors -fdiagnostics-all-candidates")
+            "-Wall -Wextra -Wnrvo -Wpedantic -pedantic-errors")
 endif ()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
@@ -62,8 +62,7 @@ target_include_directories(ButtonManager
         include/AudioController)
 target_link_libraries(ButtonManager
         PRIVATE
-        Button
-        Event
+        AudioButton
         AudioController)
 
 # Button
@@ -76,7 +75,6 @@ target_link_libraries(Button
         PUBLIC
         Event
         AudioController)
-
 
 #AudioButton
 add_library(AudioButton INTERFACE include/Button/SpecialButtons.hpp)
