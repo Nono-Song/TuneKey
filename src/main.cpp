@@ -1,5 +1,6 @@
 #include <string>
 #include <fmt/base.h>
+#include <ButtonManager.hpp>
 #include <iostream>
 #include <thread>
 #include <cassert>
@@ -47,7 +48,69 @@ void test_event(const Button::event_type& v)
     }, v);
 }
 
-struct MockAudioController : public AudioController
+void bm_test_worker()
+{
+    ButtonManager bm;
+    const auto id1 = bm.addButton("5", "1");
+    const auto id2 = bm.addButton("4", "3");
+    const auto id3 = bm.addButton("3", "5");
+    const auto id4 = bm.addButton("2", "4");
+    const auto id5 = bm.addButton("1", "2");
+
+    auto& view = bm.getView();
+
+    bm.sortView<name_type>();
+    auto v1 = std::vector{id5, id4, id3, id2, id1};
+    assert(view == v1);
+
+    bm.sortView<filename_type>();
+    auto v2 = std::vector{id1, id5, id2, id4, id3};
+    assert(view == v2);
+
+    bm.sortView();
+    auto v3 = std::vector{id1, id2, id3, id4, id5};
+    assert(view == v3);
+
+    bm.sortViewReverse<name_type>();
+    std::ranges::reverse(v1);
+    assert(view == v1);
+
+    bm.sortViewReverse<filename_type>();
+    std::ranges::reverse(v2);
+    assert(view == v2);
+
+    bm.sortViewReverse<identifier_type>();
+    std::ranges::reverse(v3);
+    assert(view == v3);
+
+
+    const auto id6 = bm.addButton("1");
+    assert(bm[id6].getName() == "1_2");
+
+
+    // Modifier Tests
+    const name_type new_name1 = "new_name1";
+    bm.modify_name(id3, new_name1);
+    assert(bm[id3].getName() == new_name1);
+    bm.modify_name(id3, "another_name");
+    assert(bm[id3].getName() == "another_name");
+
+    const filename_type new_filepath1 = "new_filepath1.txt";
+    bm.modify_filename(id2, new_filepath1);
+    assert(bm[id2].getFilePath() == new_filepath1);
+
+    const std::string new_filepath2 = "123";
+    bm.modify_filename(id2, new_filepath2);
+    assert(bm[id2].getFilePath() == new_filepath2);
+
+    bm.modify_filename(id1, std::string{"123"});
+    assert(bm[id1].getFilePath() == "123");
+
+    bm.modify_filename(id2, "another_filename");
+    assert(bm[id2].getFilePath() == "another_filename");
+}
+
+struct MockAudioController final : AudioController
 {
     void start() override
     {
@@ -180,7 +243,15 @@ void testAudioController()
 
 int main()
 {
-    // testAudioController();
-    // button_test_worker();
+    try
+    {
+        // testAudioController();
+        // button_test_worker();
+        bm_test_worker();
+    }
+    catch (std::exception& e)
+    {
+        fmt::print("Error: {}\n", e.what());
+    }
     return 0;
 }

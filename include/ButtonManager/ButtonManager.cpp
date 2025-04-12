@@ -2,34 +2,38 @@
 // Created by Schizoneurax on 3/11/2025.
 //
 
-#include <stdexcept>
-#include <vector>
-#include <unordered_map>
-#include "ButtonManager.h"
+#include "ButtonManager.hpp"
 #include "AudioController.hpp"
+#include "SpecialButtons.hpp"
 
-ButtonManager::ButtonManager() noexcept = default;
-
-Button& ButtonManager::operator[](const identifier_type& id)
+ButtonManager::ButtonManager(): audio_controller(AudioController::create())
 {
-    return button_map.at(id);
-};
+}
 
-ButtonManager::identifier_type ButtonManager::addButton(const name_type& name, const filepath_type& filepath)
+ButtonManager::~ButtonManager() = default;
+
+const Button& ButtonManager::operator[](const identifier_type id) const
 {
-    if (name_to_uuid.contains(name))
-    {
-        throw std::invalid_argument("The name already exists");
-    }
+    return *button_map.at(id);
+}
 
+identifier_type ButtonManager::addButton(name_type name, filename_type filepath)
+{
     auto new_id = next_id_++;
-    auto createButton = [this, &name, new_id, &filepath]()
+    auto createButton = [this, &name, new_id, &filepath]()-> button_ptr
     {
-        return Button(name, new_id, filepath, event_queue_);
+        if (name_to_uuid.contains(name))
+        {
+            name += "_2";
+        }
+        return std::make_unique<PlayButton>(std::move(name),
+                                            new_id,
+                                            std::move(filepath),
+                                            audio_controller.get());
     };
 
     button_map.emplace(new_id, createButton());
-    name_to_uuid.emplace(name, new_id);
+    name_to_uuid.emplace(button_map.at(new_id)->getName(), new_id);
     button_view.emplace_back(new_id);
 
     return new_id;
@@ -42,22 +46,25 @@ void ButtonManager::deleteButton(const identifier_type& target_id)
     {
         const auto& id = nh.key();
         const auto& btn = nh.mapped();
-
         if (getActiveButton() == id)
         {
-            audio_controller->stop();
-            clearActiveButton();
+            audio_controller->stop(id);
         }
 
-        erase(button_view, id);
-        erase_if(name_to_uuid, [&btn](const auto& p)
+        const auto cnt1 = erase(button_view, id);
+        const auto cnt2 = erase_if(name_to_uuid, [&btn](const auto& p)
         {
-            return p.first == btn.getName();
+            return p.first == btn->getName();
         });
+
+        if (cnt1 != cnt2 || cnt1 != 1)
+        {
+            throw std::runtime_error("Underlying data corrupted");
+        }
     }
 }
 
-const std::vector<ButtonManager::identifier_type>& ButtonManager::getView() const { return button_view; }
+const std::vector<identifier_type>& ButtonManager::getView() const { return button_view; }
 
 void ButtonManager::reorder(const std::vector<identifier_type>::difference_type& idx_from,
                             const std::vector<identifier_type>::difference_type& idx_to)
@@ -72,33 +79,83 @@ void ButtonManager::reorder(const std::vector<identifier_type>::difference_type&
     button_view.insert(button_view.cbegin() + idx_to, id);
 }
 
-void ButtonManager::modify_button_name(const identifier_type& id, const name_type& name)
-{
-    modify_button_attr<name_type>(id, name);
-}
 
-void ButtonManager::modify_button_filepath(const identifier_type& id, const filepath_type& path)
-{
-    if (getActiveButton() == id)
-    {
-        audio_controller->stop();
-    }
-
-    modify_button_attr<filepath_type>(id, path);
-}
-
-
-const std::optional<ButtonManager::identifier_type>& ButtonManager::getActiveButton() const
+const std::optional<identifier_type>& ButtonManager::getActiveButton() const
 {
     return active_button_;
 }
 
-void ButtonManager::setActiveButton(const identifier_type& target_id)
+void ButtonManager::setActiveButton(const identifier_type& id)
 {
-    active_button_ = target_id;
+    active_button_ = id;
 }
 
 void ButtonManager::clearActiveButton()
 {
     active_button_.reset();
 }
+
+template <typename Name>
+    requires std::assignable_from<name_type&, Name>
+void ButtonManager::modify_button_name(const identifier_type id, Name&& name)
+{
+    using T = decltype(name);
+
+    auto& btn = button_map.at(id);
+    auto nh = name_to_uuid.extract(btn->getName());
+
+    if (!name_to_uuid.contains(name) || name_to_uuid.at(name) == id)
+    {
+        btn->modify<name_type>(std::forward<T>(name));
+    }
+    else
+    {
+        btn->modify<name_type>(name + "_2");
+    }
+
+    nh.key() = btn->getName();
+
+    name_to_uuid.insert(std::move(nh));
+}
+
+template <typename Filename>
+    requires std::assignable_from<filename_type&, Filename>
+void ButtonManager::modify_button_filepath(const identifier_type id, Filename&& path)
+{
+    using T = decltype(path);
+    auto& btn = button_map.at(id);
+    if (getActiveButton() == id)
+    {
+        audio_controller->stop(id);
+    }
+
+    btn->modify<filename_type>(std::forward<T>(path));
+}
+
+void ButtonManager::modify_name(const identifier_type id, name_type&& name)
+{
+    modify_button_name(id, std::move(name));
+}
+
+void ButtonManager::modify_name(const identifier_type id, const name_type& name)
+{
+    modify_button_name(id, name);
+}
+
+void ButtonManager::modify_filename(const identifier_type id, filename_type&& filename)
+{
+    modify_button_filepath(id, std::move(filename));
+}
+
+void ButtonManager::modify_filename(const identifier_type id, const filename_type& filename)
+{
+    modify_button_filepath(id, filename);
+}
+
+void ButtonManager::modify_filename(const identifier_type id, const char* filename)
+{
+    modify_button_filepath(id, filename);
+}
+
+
+

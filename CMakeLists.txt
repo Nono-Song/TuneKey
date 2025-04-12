@@ -41,11 +41,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
-        Button
-        EventQueue
         ButtonManager
-        AudioController
-        Event
         SDL3::SDL3
         fmt::fmt
 )
@@ -59,12 +55,11 @@ add_library(Event INTERFACE)
 target_include_directories(Event INTERFACE include/EventQueue)
 
 # ButtonManager
-add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.h)
+add_library(ButtonManager include/ButtonManager/ButtonManager.cpp include/ButtonManager/ButtonManager.hpp)
 target_include_directories(ButtonManager
         PRIVATE
         include/Button
-        include/AudioController
-        include/Event)
+        include/AudioController)
 target_link_libraries(ButtonManager
         PRIVATE
         Button
