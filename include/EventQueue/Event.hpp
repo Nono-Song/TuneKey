@@ -6,18 +6,18 @@
 
 #include <cstdint>
 #include <string>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <variant>
 #include <optional>
 
 using identifier_type = uint64_t;
 using name_type = std::string;
-using filename_type = boost::filesystem::path;
+using filename_type = std::filesystem::path;
 
 //@formatter:off
 struct PlayEvent
 {
-    explicit PlayEvent(const identifier_type id, boost::filesystem::path path)
+    explicit PlayEvent(const identifier_type id, filename_type path)
     : id(id), filename(std::move(path)) {}
 
     identifier_type id;
@@ -52,8 +52,6 @@ struct AudioFinishedEvent
 
 struct AudioErrorEvent
 {
-    AudioErrorEvent(std::optional<identifier_type>&& id, std::string s)
-    : id(std::move(id)), error_msg(std::move(s)) {}
     AudioErrorEvent(const std::optional<identifier_type>& id, std::string s)
     : id(id), error_msg(std::move(s)) {}
     std::optional<identifier_type> id;
