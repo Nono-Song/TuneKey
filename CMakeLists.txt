@@ -34,13 +34,13 @@ find_package(SDL3 CONFIG REQUIRED)
 # Main executable
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE
-        include/ButtonManager
         include/AudioController
-        include/Button
         include/EventQueue
+        include/Button
 )
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
+        AudioController
         ButtonManager
         SDL3::SDL3
         fmt::fmt

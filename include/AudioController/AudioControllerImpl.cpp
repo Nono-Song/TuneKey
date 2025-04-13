@@ -49,7 +49,6 @@ Event AudioControllerImpl::pop_event()
 void AudioControllerImpl::start_audio_thread() noexcept
 {
     machine_ssource_ = {};
-    audio_ready_ = std::promise<void>{};
     curr_playback_id_ = 0;
     curr_active_button_.reset();
     audio_thread_ = std::jthread([this](const std::stop_token& stoken)
@@ -67,9 +66,12 @@ void AudioControllerImpl::start_audio_thread() noexcept
 
 void AudioControllerImpl::start()
 {
-    if (audio_thread_.joinable() || state_machine_thread_.joinable())
+    std::unique_lock l(state_machine_mutex_, std::try_to_lock);
+    if (!l.owns_lock() || curr_state_ != State::Offline ||
+        audio_thread_.joinable() ||
+        state_machine_thread_.joinable())
     {
-        throw std::runtime_error("AudioControllerImpl::start() failed: Instance running");
+        throw std::runtime_error("AudioController::start() failed: Instance running");
     }
 
     if (!event_queue_)
@@ -77,10 +79,13 @@ void AudioControllerImpl::start()
         throw std::runtime_error("AudioControllerImpl::start() failed: No event_queue");
     }
 
-    // Will only reach here if the current state is Offline, which means no other thread
-    // is actively running. (Although state machine thread may haven't joined yet)
-    start_audio_thread();
+    curr_state_ = State::Init;
+    l.unlock();
 
+    audio_ready_ = std::promise<void>{};
+    auto fut = audio_ready_.get_future();
+
+    start_audio_thread();
     state_machine_thread_ = std::jthread{
         [this](const std::stop_token& stoken)
         {
@@ -95,29 +100,31 @@ void AudioControllerImpl::start()
         }
     };
 
-    audio_ready_.get_future().wait();
+    fut.get();
 }
 
 void AudioControllerImpl::shutdown()
 {
-    if (state_machine_thread_.joinable())
+    if (std::shared_lock lock(state_machine_mutex_);
+        curr_state_ != State::Offline)
     {
-        if (std::shared_lock lock(state_machine_mutex_);
-            curr_state_ != State::Offline)
-        {
-            // push_event<ShutdownEvent>();
-            event_queue_->push(ShutdownEvent{});
-        }
+        event_queue_->push(ShutdownEvent{});
+        lock.unlock();
         // While we can't call join() while handling the ShutdownEvent,
         // we can join() here.
-        state_machine_thread_.join();
+        if (state_machine_thread_.joinable())
+        {
+            state_machine_thread_.join();
+        }
     }
 }
 
 void AudioControllerImpl::play(const identifier_type id, const filename_type& path)
 {
     if (std::shared_lock l(state_machine_mutex_);
-        curr_state_ != State::Offline)
+        curr_state_ == State::Play ||
+        curr_state_ == State::Pause ||
+        curr_state_ == State::Idle)
     {
         event_queue_->push(PlayEvent{id, path});
     }
@@ -144,7 +151,7 @@ void AudioControllerImpl::resume(const identifier_type id)
 void AudioControllerImpl::stop(const identifier_type id)
 {
     if (std::shared_lock l(state_machine_mutex_);
-        curr_state_ != State::Offline && curr_state_ != State::Idle)
+        curr_state_ == State::Play || curr_state_ == State::Pause)
     {
         event_queue_->push(StopEvent{id});
     }
@@ -173,7 +180,7 @@ void AudioControllerImpl::audio_event_loop(const std::stop_token& stoken)
         {
             return curr_state_ == State::Play && curr_playback_id_;
         });
-        if (stoken.stop_requested() || curr_state_ == State::Error) { break; }
+        if (stoken.stop_requested()) { break; }
 
         const auto audio_path = curr_audio_path_;
         if (curr_playback_id_)
@@ -201,8 +208,16 @@ void AudioControllerImpl::audio_event_loop(const std::stop_token& stoken)
             // Play a new audio if playback id changes
             if (std::shared_lock l{state_machine_mutex_}; playback_id != curr_playback_id_)
             {
-                fmt::print("AudioThread: playback id {} superseded by {}\n",
-                           playback_id, curr_playback_id_.value_or(0));
+                if (curr_playback_id_.has_value())
+                {
+                    fmt::print("AudioThread: playback id {} superseded by {}\n",
+                        playback_id, curr_playback_id_.value());
+                }
+                else
+                {
+                    fmt::print("Audio stopped...\n");
+                }
+
                 break;
             }
 
@@ -230,31 +245,26 @@ void AudioControllerImpl::audio_event_loop(const std::stop_token& stoken)
             }
 
             if (std::shared_lock stop_lock(state_machine_mutex_);
-                curr_state_ == State::Idle ||
-                curr_state_ == State::Error ||
+                curr_state_ != State::Play ||
                 stoken.stop_requested())
             {
+                fmt::print("Audio stopped...\n");
                 break;
             }
         }
 
-        if (std::shared_lock state_lock(state_machine_mutex_);
-            curr_state_ == State::Idle ||
-            curr_state_ == State::Error ||
-            stoken.stop_requested())
-        {
-            fmt::print("Audio stopped...\n");
-        }
         // Here we've broken out of the loop while still have the same playback_id
         // We must have been playing the same audio to its end.
         // In real implementation there might be a more robust way?
-        else if (playback_id == curr_playback_id_)
+        if (std::shared_lock state_lock(state_machine_mutex_);
+            curr_state_ == State::Play &&
+            playback_id == curr_playback_id_)
         {
             fmt::print("Audio finished naturally\n");
             state_lock.unlock();
             event_queue_->push(AudioFinishedEvent{playback_id});
 
-            // Re-enter the loop only if state has been changed to idle
+            // Re-enter the loop only if state has been changed.
             if (state_lock.lock(); curr_state_ == State::Play)
             {
                 audio_condition_.wait(state_lock, stoken, [this]
@@ -266,28 +276,19 @@ void AudioControllerImpl::audio_event_loop(const std::stop_token& stoken)
     }
 }
 
-void AudioControllerImpl::reset_playback()
-{
-    assert(curr_state_ != State::Offline && curr_state_ != State::Error);
-    // Reset all playback metadata for a new playback
-    // Maybe it should be "populating all metadata for a new playback"
-    // Definitely need to change in the future so I'll leave a TODO here.
-    curr_state_ = State::Idle;
-    curr_audio_path_ = "";
-    duration_ = default_duration;
-}
-
 void AudioControllerImpl::play_callback(const PlayEvent& play_evt)
 {
     // Play a new audio, irrespective of the current state,
     // except the machine has already shutdown, aka. in offline state.
     if (std::scoped_lock l(state_machine_mutex_);
-        curr_state_ != State::Offline && curr_state_ != State::Error)
+        curr_state_ == State::Play ||
+        curr_state_ == State::Pause ||
+        curr_state_ == State::Idle)
     {
         // Suppose to reset all metadata. Currently not much to do.
         // In real implementation, the PlayEvent struct should contain all necessary metadata
         // to populate. May need to change the "reset_playback" to "populate_metadata" or something
-        reset_playback();
+        duration_ = default_duration;
         fmt::print("Playing new audio...\n");
         // This is critical for the audio thread to distinguish a new audio from its current audio,
         ++curr_playback_id_;
@@ -330,13 +331,10 @@ void AudioControllerImpl::stop_callback(const StopEvent&)
     // Manually stop the audio. The audio could be playing or paused.
     // After StopEvent, only a PlayEvent or ShutdownEvent will trigger a state change.
     if (std::unique_lock lock(state_machine_mutex_);
-        curr_state_ != State::Idle &&
-        curr_state_ != State::Offline &&
-        curr_state_ != State::Error)
+        curr_state_ == State::Pause || curr_state_ == State::Play)
     {
-        // reset_playback(); Not necessary. A new PlayEvent will do that.
         curr_state_ = State::Idle;
-        curr_active_button_.reset();
+        // curr_active_button_.reset();
 
         // See comment in play_callback
         audio_condition_.notify_one();
@@ -346,10 +344,9 @@ void AudioControllerImpl::stop_callback(const StopEvent&)
 void AudioControllerImpl::audio_ready_callback(const AudioReadyEvent&)
 {
     if (std::scoped_lock lock(state_machine_mutex_);
-        curr_state_ == State::Offline || curr_state_ == State::Error)
+        curr_state_ == State::Init || curr_state_ == State::Error)
     {
         curr_state_ = State::Idle;
-        audio_ready_.set_value();
     }
 }
 
@@ -369,7 +366,6 @@ void AudioControllerImpl::audio_finished_callback(const AudioFinishedEvent&)
         audio_condition_.notify_one();
     }
 }
-
 
 void AudioControllerImpl::shutdown_callback(const ShutdownEvent&)
 {
@@ -426,6 +422,12 @@ void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noex
         [this](const AudioErrorEvent& evt) { error_callback(evt); },
     };
 
+    if (std::shared_lock lock(state_machine_mutex_);
+        curr_state_ == State::Offline)
+    {
+        audio_ready_.set_exception(std::make_exception_ptr(std::runtime_error("State is not Idle")));
+    }
+    audio_ready_.set_value();
     while (!stoken.stop_requested())
     {
         try

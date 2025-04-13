@@ -39,15 +39,13 @@ private:
     Event pop_event();
 
     /** State **/
-    enum class State { Error, Offline, Idle, Play, Pause };
+    enum class State {Init, Error, Offline, Idle, Play, Pause };
 
     // In case of audio error and need to just restart the audio thread...
     void start_audio_thread() noexcept;
     // Audio thread main loop
     void audio_event_loop(const std::stop_token&);
     void state_machine_loop(const std::stop_token& stoken) noexcept;
-
-    void reset_playback();
 
     // State change callback functions
     void play_callback(const PlayEvent&);
@@ -70,8 +68,9 @@ private:
     std::optional<identifier_type> curr_playback_id_{};
     std::atomic_int duration_{default_duration};
     std::condition_variable_any audio_condition_{};
-    std::promise<void> audio_ready_{};
 
     std::jthread state_machine_thread_{};
     std::jthread audio_thread_{};
+
+    std::promise<void> audio_ready_;
 };

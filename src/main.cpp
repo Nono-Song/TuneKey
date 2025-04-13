@@ -2,8 +2,6 @@
 #include <fmt/base.h>
 #include <ButtonManager.hpp>
 #include <iostream>
-#include <thread>
-#include <cassert>
 #include "AudioController.hpp"
 #include "SpecialButtons.hpp"
 
