@@ -5,7 +5,6 @@
 #include "AudioControllerImpl.hpp"
 #include <chrono>
 #include <fmt/base.h>
-#include <cassert>
 #include "EventQueue.hpp"
 
 using namespace std::literals::chrono_literals;
@@ -29,7 +28,8 @@ AudioControllerImpl::AudioControllerImpl()
 // @formatter:on
 AudioControllerImpl::~AudioControllerImpl()
 {
-    if (std::shared_lock l(state_machine_mutex_); curr_state_ != State::Offline)
+    if (std::shared_lock l(state_machine_mutex_);
+        curr_state_ != State::Offline)
     {
         l.unlock();
         AudioControllerImpl::shutdown();
@@ -48,7 +48,6 @@ Event AudioControllerImpl::pop_event()
 
 void AudioControllerImpl::start_audio_thread() noexcept
 {
-    machine_ssource_ = {};
     curr_playback_id_ = 0;
     curr_active_button_.reset();
     audio_thread_ = std::jthread([this](const std::stop_token& stoken)
@@ -89,14 +88,8 @@ void AudioControllerImpl::start()
     state_machine_thread_ = std::jthread{
         [this](const std::stop_token& stoken)
         {
-            // There is a level of indirection here.
-            // Is there a way to let the created thread use the machine_ssource directly?
-            std::stop_callback cb{
-                stoken,
-                [this] { return machine_ssource_.request_stop(); }
-            };
             // state_machine_loop doesn't throw exception
-            state_machine_loop(machine_ssource_.get_token());
+            state_machine_loop(stoken);
         }
     };
 
@@ -121,18 +114,20 @@ void AudioControllerImpl::shutdown()
 
 void AudioControllerImpl::play(const identifier_type id, const filename_type& path)
 {
-    if (std::shared_lock l(state_machine_mutex_);
+    if (std::unique_lock l(state_machine_mutex_);
         curr_state_ == State::Play ||
         curr_state_ == State::Pause ||
         curr_state_ == State::Idle)
     {
+        curr_active_button_ = id;
+        l.unlock();
         event_queue_->push(PlayEvent{id, path});
     }
 }
 
 void AudioControllerImpl::pause(const identifier_type id)
 {
-    if (std::shared_lock lock(state_machine_mutex_);
+    if (std::shared_lock l(state_machine_mutex_);
         curr_state_ == State::Play)
     {
         event_queue_->push(PauseEvent{id});
@@ -141,7 +136,7 @@ void AudioControllerImpl::pause(const identifier_type id)
 
 void AudioControllerImpl::resume(const identifier_type id)
 {
-    if (std::shared_lock lock(state_machine_mutex_);
+    if (std::shared_lock l(state_machine_mutex_);
         curr_state_ == State::Pause)
     {
         event_queue_->push(ResumeEvent{id});
@@ -293,7 +288,6 @@ void AudioControllerImpl::play_callback(const PlayEvent& play_evt)
         // This is critical for the audio thread to distinguish a new audio from its current audio,
         ++curr_playback_id_;
         curr_state_ = State::Play;
-        curr_active_button_ = play_evt.id;
 
         // PlayEvent will have more metadata in actual implementation and I should let
         // "reset_playback()" do the work instead of here.
@@ -422,28 +416,36 @@ void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noex
         [this](const AudioErrorEvent& evt) { error_callback(evt); },
     };
 
+
+
+    static const auto loop_until = [this, &stoken](const State& state)
+    {
+        while (!stoken.stop_requested())
+        {
+            try
+            {
+                std::visit(visit, pop_event());
+                if (std::shared_lock lock(state_machine_mutex_);
+                    curr_state_ == state)
+                    { break; }
+            }
+            catch (std::exception& e)
+            {
+                fmt::print("state_machine_loop: Exception occurred: {}\n", e.what());
+            }
+        }
+    };
+
     if (std::shared_lock lock(state_machine_mutex_);
         curr_state_ == State::Offline)
     {
         audio_ready_.set_exception(std::make_exception_ptr(std::runtime_error("State is not Idle")));
+        return;
     }
+
+    loop_until(State::Idle);
+
     audio_ready_.set_value();
-    while (!stoken.stop_requested())
-    {
-        try
-        {
-            auto evt = pop_event();
-            std::visit(visit, evt);
-            if (std::shared_lock l(state_machine_mutex_);
-                curr_state_ == State::Offline)
-            {
-                break;
-            }
-        }
-        catch (std::exception& e)
-        {
-            fmt::print("state_machine_loop: Exception occurred: {}\n", e.what());
-            break;
-        }
-    }
+
+    loop_until(State::Offline);
 }

@@ -59,7 +59,6 @@ private:
 
     static constexpr int default_duration{10};
 
-    std::stop_source machine_ssource_{};
     std::unique_ptr<EventQueue<Event>> event_queue_;
     mutable std::shared_mutex state_machine_mutex_{};
     State curr_state_{State::Offline};
