@@ -19,7 +19,7 @@ public:
     using button_type = Button;
     using button_ptr = std::unique_ptr<button_type>;
 
-    ButtonManager();
+    explicit ButtonManager(std::unique_ptr<AudioController>&& controller);
     ~ButtonManager();
 
     ButtonManager(const ButtonManager&) = delete;
@@ -35,7 +35,7 @@ public:
     identifier_type addButton(name_type name, filename_type filepath = "");
     void deleteButton(const identifier_type& target_id);
 
-    [[nodiscard]] const std::vector<identifier_type>& getView() const;
+    [[nodiscard]] const std::vector<identifier_type>& getView() const { return button_view; }
 
     void reorder(const std::vector<identifier_type>::difference_type& idx_from,
                  const std::vector<identifier_type>::difference_type& idx_to);
@@ -70,9 +70,7 @@ public:
         );
     }
 
-    [[nodiscard]] const std::optional<identifier_type>& getActiveButton() const;
-    void setActiveButton(const identifier_type& id);
-    void clearActiveButton();
+    [[nodiscard]] std::optional<identifier_type> getActiveButton() const;
 
 private:
     template <typename Name>
@@ -91,5 +89,4 @@ private:
     std::unordered_map<identifier_type, button_ptr> button_map{};
     std::vector<identifier_type> button_view{};
     std::unordered_map<name_type, identifier_type> name_to_uuid{};
-    std::optional<identifier_type> active_button_{};
 };

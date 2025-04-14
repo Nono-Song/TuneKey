@@ -1,10 +1,13 @@
 #include <string>
 #include <fmt/base.h>
-#include <ButtonManager.hpp>
+#include "ButtonManager.hpp"
+#include <algorithm>
+#include <thread>
+#include <cassert>
 #include <iostream>
 #include "AudioController.hpp"
 #include "SpecialButtons.hpp"
-
+using namespace std::chrono_literals;
 void test_projector(const Button& button, const Button::ProjVariant& v)
 {
     std::visit([&button]<typename T>(T&& arg)
@@ -48,7 +51,7 @@ void test_event(const Button::event_type& v)
 
 void bm_test_worker()
 {
-    ButtonManager bm;
+    ButtonManager bm(AudioController::create());
     const auto id1 = bm.addButton("5", "1");
     const auto id2 = bm.addButton("4", "3");
     const auto id3 = bm.addButton("3", "5");
@@ -106,6 +109,20 @@ void bm_test_worker()
 
     bm.modify_filename(id2, "another_filename");
     assert(bm[id2].getFilePath() == "another_filename");
+
+    bm[id2].interact();
+    bm[id3].interact();
+    bm.start();
+    bm[id4].interact();
+
+    assert(bm.getActiveButton() == id4);
+    std::this_thread::sleep_for(3s);
+    assert(bm.getActiveButton() == id4);
+    bm.modify_filename(id4, "yet_another_filename");
+
+    std::this_thread::sleep_for(12s);
+    bm.shutdown();
+
 }
 
 struct MockAudioController final : AudioController

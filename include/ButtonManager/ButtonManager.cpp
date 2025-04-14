@@ -6,11 +6,24 @@
 #include "AudioController.hpp"
 #include "SpecialButtons.hpp"
 
-ButtonManager::ButtonManager(): audio_controller(AudioController::create())
+ButtonManager::ButtonManager(std::unique_ptr<AudioController>&& controller)
+: audio_controller(std::move(controller))
 {
 }
 
 ButtonManager::~ButtonManager() = default;
+
+void ButtonManager::start()
+{
+    audio_controller->start();
+}
+
+void ButtonManager::shutdown()
+{
+    audio_controller->shutdown();
+}
+
+
 
 const Button& ButtonManager::operator[](const identifier_type id) const
 {
@@ -64,8 +77,6 @@ void ButtonManager::deleteButton(const identifier_type& target_id)
     }
 }
 
-const std::vector<identifier_type>& ButtonManager::getView() const { return button_view; }
-
 void ButtonManager::reorder(const std::vector<identifier_type>::difference_type& idx_from,
                             const std::vector<identifier_type>::difference_type& idx_to)
 {
@@ -80,19 +91,9 @@ void ButtonManager::reorder(const std::vector<identifier_type>::difference_type&
 }
 
 
-const std::optional<identifier_type>& ButtonManager::getActiveButton() const
+std::optional<identifier_type> ButtonManager::getActiveButton() const
 {
-    return active_button_;
-}
-
-void ButtonManager::setActiveButton(const identifier_type& id)
-{
-    active_button_ = id;
-}
-
-void ButtonManager::clearActiveButton()
-{
-    active_button_.reset();
+    return audio_controller->active_button();
 }
 
 template <typename Name>
