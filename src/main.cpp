@@ -6,6 +6,7 @@
 #include <cassert>
 #include <iostream>
 #include "AudioController.hpp"
+#include "AudioControllerFactory.hpp"
 #include "SpecialButtons.hpp"
 using namespace std::chrono_literals;
 void test_projector(const Button& button, const Button::ProjVariant& v)
@@ -51,7 +52,7 @@ void test_event(const Button::event_type& v)
 
 void bm_test_worker()
 {
-    ButtonManager bm(AudioController::create());
+    ButtonManager bm(AudioControllerFactory::createAudioController());
     const auto id1 = bm.addButton("5", "1");
     const auto id2 = bm.addButton("4", "3");
     const auto id3 = bm.addButton("3", "5");
@@ -157,7 +158,7 @@ struct MockAudioController final : AudioController
 
 void button_test_worker()
 {
-    const std::unique_ptr<AudioController> controller = AudioController::create();
+    const std::unique_ptr<AudioController> controller = AudioControllerFactory::createAudioController();
     controller->start();
 
     PlayButton button("test1", 0, controller.get());
@@ -201,7 +202,7 @@ void button_test_worker()
 
 void testAudioController()
 {
-    const auto controller = AudioController::create();
+    const auto controller = AudioControllerFactory::createAudioController();
     controller->start();
 
     std::string input;
