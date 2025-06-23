@@ -2,6 +2,6 @@ add_library(AudioControllerFactory STATIC AudioControllerFactory.hpp AudioContro
 target_include_directories(AudioControllerFactory PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(AudioControllerFactory
         PUBLIC
-        AudioController
+        IAudioController
         PRIVATE
         AudioControllerImpl)

@@ -9,12 +9,12 @@
 class PlayButton final : public Button
 {
 public:
-    PlayButton(const name_type& name, const identifier_type id, AudioController* controller)
+    PlayButton(const name_type& name, const identifier_type id, IAudioController* controller)
         : Button(name, id, "", controller)
     {
     }
 
-    PlayButton(name_type name, const identifier_type id, filename_type path, AudioController* controller)
+    PlayButton(name_type name, const identifier_type id, filename_type path, IAudioController* controller)
         : Button(std::move(name), id, std::move(path), controller)
     {
     }
@@ -30,7 +30,7 @@ public:
 class PauseButton final : public Button
 {
 public:
-    PauseButton(const name_type& name, const identifier_type id, AudioController* controller)
+    PauseButton(const name_type& name, const identifier_type id, IAudioController* controller)
         : Button(name, id, "", controller)
     {
     }
@@ -46,7 +46,7 @@ public:
 class ResumeButton final : public Button
 {
 public:
-    ResumeButton(name_type name, const identifier_type id, AudioController* controller)
+    ResumeButton(name_type name, const identifier_type id, IAudioController* controller)
         : Button(std::move(name), id, "", controller)
     {
     }
@@ -62,7 +62,7 @@ public:
 class StopButton final : public Button
 {
 public:
-    StopButton(name_type name, const identifier_type id, AudioController* controller)
+    StopButton(name_type name, const identifier_type id, IAudioController* controller)
         : Button(std::move(name), id, "", controller)
     {
     }

@@ -5,8 +5,8 @@
 #pragma once
 #include <memory>
 
-#include <AudioController.hpp>
+#include <IAudioController.hpp>
 class AudioControllerFactory {
   public:
-    static std::unique_ptr<AudioController> createAudioController();
+    static std::unique_ptr<IAudioController> createAudioController();
 };

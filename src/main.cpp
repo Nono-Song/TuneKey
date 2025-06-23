@@ -5,7 +5,7 @@
 #include <thread>
 #include <cassert>
 #include <iostream>
-#include "AudioController.hpp"
+#include "IAudioController.hpp"
 #include "AudioControllerFactory.hpp"
 #include "SpecialButtons.hpp"
 using namespace std::chrono_literals;
@@ -126,7 +126,7 @@ void bm_test_worker()
 
 }
 
-struct MockAudioController final : AudioController
+struct MockAudioController final : IAudioController
 {
     void start() override
     {
@@ -158,7 +158,7 @@ struct MockAudioController final : AudioController
 
 void button_test_worker()
 {
-    const std::unique_ptr<AudioController> controller = AudioControllerFactory::createAudioController();
+    const std::unique_ptr<IAudioController> controller = AudioControllerFactory::createAudioController();
     controller->start();
 
     PlayButton button("test1", 0, controller.get());

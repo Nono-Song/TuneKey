@@ -405,7 +405,7 @@ void AudioControllerImpl::error_callback(const AudioErrorEvent&)
 
 void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noexcept
 {
-    static const auto visit = Visitor{
+    static const auto visitor = Visitor{
         [this](const PlayEvent& evt) { play_callback(evt); },
         [this](const PauseEvent& evt) { pause_callback(evt); },
         [this](const ResumeEvent& evt) { resume_callback(evt); },
@@ -424,7 +424,7 @@ void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noex
         {
             try
             {
-                std::visit(visit, pop_event());
+                std::visit(visitor, pop_event());
                 if (std::shared_lock lock(state_machine_mutex_);
                     curr_state_ == state)
                     { break; }
