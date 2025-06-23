@@ -3,10 +3,10 @@
 //
 
 #include "ButtonManager.hpp"
-#include "AudioController.hpp"
+#include "IAudioController.hpp"
 #include "SpecialButtons.hpp"
 
-ButtonManager::ButtonManager(std::unique_ptr<AudioController>&& controller)
+ButtonManager::ButtonManager(std::unique_ptr<IAudioController>&& controller)
 : audio_controller(std::move(controller))
 {
 }

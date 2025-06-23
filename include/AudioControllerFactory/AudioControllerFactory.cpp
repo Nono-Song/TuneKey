@@ -5,7 +5,7 @@
 #include "AudioControllerFactory.hpp"
 #include <AudioControllerImpl.hpp>
 
-std::unique_ptr<AudioController> AudioControllerFactory::createAudioController()
+std::unique_ptr<IAudioController> AudioControllerFactory::createAudioController()
 {
   return std::make_unique<AudioControllerImpl>();
 }
