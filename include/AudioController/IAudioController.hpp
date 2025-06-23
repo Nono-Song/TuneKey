@@ -6,9 +6,9 @@
 #include <Event.hpp>
 
 //@formatter:off
-struct AudioController
+struct IAudioController
 {
-    virtual ~AudioController();
+    virtual ~IAudioController() = default;
     virtual void start() = 0;
     virtual void shutdown() = 0;
 

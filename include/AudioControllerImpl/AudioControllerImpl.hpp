@@ -9,12 +9,12 @@
 #include <condition_variable>
 #include <future>
 #include <optional>
-#include "AudioController.hpp"
+#include "IAudioController.hpp"
 
 template <typename T>
 class EventQueue;
 
-class AudioControllerImpl: public AudioController
+class AudioControllerImpl: public IAudioController
 {
 public:
     AudioControllerImpl();
