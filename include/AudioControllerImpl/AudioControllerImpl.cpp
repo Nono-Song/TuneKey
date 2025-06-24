@@ -31,7 +31,7 @@ AudioControllerImpl::~AudioControllerImpl()
     if (std::shared_lock l(state_machine_mutex_);
         curr_state_ != State::Offline)
     {
-        l.unlock();
+        l.unlock(); // avoid deadlock since the 'shutdown' method also tries to acquire the lock
         AudioControllerImpl::shutdown();
     }
 }
@@ -281,8 +281,7 @@ void AudioControllerImpl::play_callback(const PlayEvent& play_evt)
         curr_state_ == State::Idle)
     {
         // Suppose to reset all metadata. Currently not much to do.
-        // In real implementation, the PlayEvent struct should contain all necessary metadata
-        // to populate. May need to change the "reset_playback" to "populate_metadata" or something
+        // In real implementation, the PlayEvent struct should contain all necessary metadata to populate.
         duration_ = default_duration;
         fmt::print("Playing new audio...\n");
         // This is critical for the audio thread to distinguish a new audio from its current audio,
@@ -405,7 +404,7 @@ void AudioControllerImpl::error_callback(const AudioErrorEvent&)
 
 void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noexcept
 {
-    static const auto visit = Visitor{
+    static const auto visitor = Visitor{
         [this](const PlayEvent& evt) { play_callback(evt); },
         [this](const PauseEvent& evt) { pause_callback(evt); },
         [this](const ResumeEvent& evt) { resume_callback(evt); },
@@ -424,7 +423,7 @@ void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noex
         {
             try
             {
-                std::visit(visit, pop_event());
+                std::visit(visitor, pop_event());
                 if (std::shared_lock lock(state_machine_mutex_);
                     curr_state_ == state)
                     { break; }
