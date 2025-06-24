@@ -1,7 +1,7 @@
 # Button
 add_library(Button STATIC Button.hpp Button.cpp)
 target_include_directories(Button PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(Button PUBLIC AudioControllerFactory)
+target_link_libraries(Button PUBLIC IAudioController)
 
 #AudioButton
 add_library(AudioButton INTERFACE SpecialButtons.hpp)
