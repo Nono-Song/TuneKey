@@ -8,7 +8,7 @@
 //@formatter:off
 struct IAudioController
 {
-    virtual ~IAudioController() = default;
+    virtual ~IAudioController();
     virtual void start() = 0;
     virtual void shutdown() = 0;
 
