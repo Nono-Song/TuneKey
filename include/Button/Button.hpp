@@ -8,7 +8,7 @@
 #include <concepts>
 #include <functional>
 
-struct AudioController;
+struct IAudioController;
 
 template <typename T>
 concept Identifier = std::same_as<T, identifier_type>;
@@ -39,8 +39,8 @@ class Button
 public:
     using event_type = Event;
     /** Ctor, Dtor and Copy Control **/
-    Button(const name_type&, identifier_type, AudioController*);
-    Button(name_type, identifier_type, filename_type, AudioController*);
+    Button(const name_type&, identifier_type, IAudioController*);
+    Button(name_type, identifier_type, filename_type, IAudioController*);
 
     Button(Button&& other) noexcept;
     virtual ~Button() noexcept;
@@ -82,7 +82,7 @@ protected:
     void handleEvent() const;
 
 private:
-    AudioController* controller_;
+    IAudioController* controller_;
     // Todo: Time of creation
     // Todo: Time of last usage
     name_type name_;

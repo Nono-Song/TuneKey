@@ -10,7 +10,7 @@
 #include <SpecialButtons.hpp>
 
 
-struct AudioController;
+struct IAudioController;
 class Button;
 
 class ButtonManager
@@ -19,7 +19,7 @@ public:
     using button_type = Button;
     using button_ptr = std::unique_ptr<button_type>;
 
-    explicit ButtonManager(std::unique_ptr<AudioController>&& controller);
+    explicit ButtonManager(std::unique_ptr<IAudioController>&& controller);
     ~ButtonManager();
 
     ButtonManager(const ButtonManager&) = delete;
@@ -84,7 +84,7 @@ private:
     static constexpr size_t MAX_NBUTTON = 100;
 
     identifier_type next_id_ = 0;
-    std::unique_ptr<AudioController> audio_controller;
+    std::unique_ptr<IAudioController> audio_controller;
 
     std::unordered_map<identifier_type, button_ptr> button_map{};
     std::vector<identifier_type> button_view{};

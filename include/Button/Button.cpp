@@ -2,14 +2,14 @@
 // Created by Schizoneurax on 4/10/2025.
 //
 #include "Button.hpp"
-#include <AudioController.hpp>
+#include <IAudioController.hpp>
 
-Button::Button(const name_type& name, const identifier_type id, AudioController* controller)
+Button::Button(const name_type& name, const identifier_type id, IAudioController* controller)
     : Button(name, id, "", controller)
 {
 }
 
-Button::Button(name_type name, const identifier_type id, filename_type path, AudioController* controller)
+Button::Button(name_type name, const identifier_type id, filename_type path, IAudioController* controller)
     : controller_(controller), name_(std::move(name)), id_(id), file_path_(std::move(path))
 {
 }
