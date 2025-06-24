@@ -68,8 +68,6 @@ add_subdirectory(include/ButtonManager)
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
-        AudioControllerFactory
-        AudioButton
         ButtonManager
         SDL3::SDL3
         fmt::fmt

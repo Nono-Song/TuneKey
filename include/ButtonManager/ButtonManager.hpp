@@ -7,11 +7,10 @@
 #include <unordered_map>
 #include <optional>
 #include <algorithm>
-#include <SpecialButtons.hpp>
+#include <Button.hpp>
 
 
 struct IAudioController;
-class Button;
 
 class ButtonManager
 {
@@ -41,25 +40,19 @@ public:
                  const std::vector<identifier_type>::difference_type& idx_to);
 
 
-    void modify_name(identifier_type id, name_type&& name);
-    void modify_name(identifier_type id, const name_type& name);
-    void modify_filename(identifier_type id, filename_type&& filename);
-    void modify_filename(identifier_type id, const filename_type& filename);
-    void modify_filename(identifier_type id, const char* filename);
+    void modify_name(identifier_type id, name_type&& new_name);
+    void modify_name(identifier_type id, const name_type& new_name);
+    void modify_filename(identifier_type id, filename_type&& new_filename);
+    void modify_filename(identifier_type id, const filename_type& new_filename);
+    void modify_filename(identifier_type id, const char* new_filename);
 
-    template <ButtonAttr Key = identifier_type>
-    void sortViewReverse() { sortView<Key>(true); }
-
-    template <ButtonAttr Key = identifier_type>
-    void sortView(bool reverse = false)
+    template <ButtonAttr Key = identifier_type, typename Comparator>
+        requires std::same_as<bool, std::invoke_result_t<Comparator, const Key&, const Key&>>
+    void sortView(Comparator cmp)
     {
-        std::visit([this, reverse](const auto& proj)
+        std::visit([this, cmp](const auto proj)
                    {
-                       auto cmp = [reverse](const auto& x, const auto& y)
-                       {
-                           return reverse ? std::greater{}(x, y) : std::less{}(x, y);
-                       };
-                       auto projector = [this, &proj](const identifier_type id)
+                       auto projector = [this, proj](const identifier_type id)
                        {
                            return proj(*button_map.at(id));
                        };
@@ -75,11 +68,11 @@ public:
 private:
     template <typename Name>
         requires std::assignable_from<name_type&, Name>
-    void modify_button_name(identifier_type id, Name&& name);
+    void modify_button_name(identifier_type id, Name&& new_name);
 
     template <typename Filename>
         requires std::assignable_from<filename_type&, Filename>
-    void modify_button_filepath(identifier_type id, Filename&& path);
+    void modify_button_filepath(identifier_type id, Filename&& new_path);
 
     static constexpr size_t MAX_NBUTTON = 100;
 

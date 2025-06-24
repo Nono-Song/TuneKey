@@ -8,6 +8,7 @@
 #include "IAudioController.hpp"
 #include "AudioControllerFactory.hpp"
 #include "SpecialButtons.hpp"
+
 using namespace std::chrono_literals;
 void test_projector(const Button& button, const Button::ProjVariant& v)
 {
@@ -61,27 +62,27 @@ void bm_test_worker()
 
     auto& view = bm.getView();
 
-    bm.sortView<name_type>();
+    bm.sortView<name_type>(std::less<>());
     auto v1 = std::vector{id5, id4, id3, id2, id1};
     assert(view == v1);
 
-    bm.sortView<filename_type>();
+    bm.sortView<filename_type>(std::less<>());
     auto v2 = std::vector{id1, id5, id2, id4, id3};
     assert(view == v2);
 
-    bm.sortView();
+    bm.sortView(std::less<>());
     auto v3 = std::vector{id1, id2, id3, id4, id5};
     assert(view == v3);
 
-    bm.sortViewReverse<name_type>();
+    bm.sortView<name_type>(std::greater<>());
     std::ranges::reverse(v1);
     assert(view == v1);
 
-    bm.sortViewReverse<filename_type>();
+    bm.sortView<filename_type>(std::greater<>());
     std::ranges::reverse(v2);
     assert(view == v2);
 
-    bm.sortViewReverse<identifier_type>();
+    bm.sortView<identifier_type>(std::greater<>());
     std::ranges::reverse(v3);
     assert(view == v3);
 
