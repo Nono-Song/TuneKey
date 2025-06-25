@@ -64,8 +64,11 @@ private:
     State curr_state_{State::Offline};
     filename_type curr_audio_path_{};
     std::optional<identifier_type> curr_active_button_{};
+
+    /**
+     * The playback_id makes clear if we need to play a new audio
+     **/
     std::optional<identifier_type> curr_playback_id_{};
-    std::atomic_int duration_{default_duration};
     std::condition_variable_any audio_condition_{};
 
     std::jthread state_machine_thread_{};
