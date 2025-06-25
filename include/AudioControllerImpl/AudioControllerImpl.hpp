@@ -45,7 +45,7 @@ private:
     void start_audio_thread() noexcept;
     // Audio thread main loop
     void audio_event_loop(const std::stop_token&);
-    void state_machine_loop(const std::stop_token& stoken) noexcept;
+    void state_machine_loop(const std::stop_token&) noexcept;
 
     // State change callback functions
     void play_callback(const PlayEvent&);

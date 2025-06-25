@@ -3,6 +3,7 @@
 //
 
 #include "AudioControllerImpl.hpp"
+#include <cassert>
 #include <chrono>
 #include <fmt/base.h>
 #include <SDLManager.hpp>
@@ -111,6 +112,8 @@ void AudioControllerImpl::shutdown()
             state_machine_thread_.join();
         }
     }
+
+    fmt::print(stderr, "AudioControllerImpl::shutdown()\n");
 }
 
 void AudioControllerImpl::play(const identifier_type id, const filename_type& path)
@@ -171,19 +174,17 @@ void AudioControllerImpl::audio_event_loop(const std::stop_token& stoken)
         std::shared_lock l{state_machine_mutex_};
         // Wait for any notification for 200ms
         audio_condition_.wait_for(l, 200ms);
-        playback_id = curr_playback_id_.value_or(playback_id);
 
         if (stoken.stop_requested()) { break; }
 
         // 1. Play an audio or switch to a new audio
-        if (curr_state_ == State::Play &&
-            (Mix_GetMusicType(nullptr) == MUS_NONE || playback_id != curr_playback_id_))
+        if (curr_state_ == State::Play && playback_id != curr_playback_id_.value_or(playback_id))
         {
             Mix_HaltMusic();
             try
             {
                 sdl_manager.load_and_play(curr_audio_path_);
-                playback_id = curr_playback_id_.value();
+                playback_id = curr_playback_id_.value_or(playback_id);
             }
             catch (std::exception& e)
             {
@@ -215,6 +216,8 @@ void AudioControllerImpl::audio_event_loop(const std::stop_token& stoken)
         {
             l.unlock();
             event_queue_->push(AudioFinishedEvent{playback_id});
+            l.lock();
+            audio_condition_.wait(l, stoken, [this] { return curr_state_ != State::Play; });
         }
     }
 }
@@ -298,6 +301,8 @@ void AudioControllerImpl::audio_finished_callback(const AudioFinishedEvent&)
         curr_state_ == State::Play)
     {
         curr_state_ = State::Idle;
+        fmt::print(stderr, "AudioControllerImpl::audio_finished_callback()\n");
+        audio_condition_.notify_one();
     }
 }
 
@@ -358,9 +363,8 @@ void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noex
 
 
 
-    static const auto loop_until = [this, &stoken](const State& state)
+    static const auto loop_until = [this, &stoken](const State state)
     {
-        auto test = stoken;
         while (!stoken.stop_requested())
         {
             try
@@ -388,7 +392,10 @@ void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noex
 
     loop_until(State::Idle);
 
+    assert(curr_state_ == State::Idle);
     audio_ready_.set_value();
 
     loop_until(State::Offline);
+
+    fmt::print(stderr, "AudioControllerImpl::state_machine_loop(): shutdown\n");
 }

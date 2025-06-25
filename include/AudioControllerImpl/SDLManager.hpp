@@ -23,13 +23,11 @@ public:
         audio_device_ = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr);
         if (!audio_device_)
         {
-            SDL_Quit();
             throw std::runtime_error("SDL_OpenAudioDevice failed: " + std::string(SDL_GetError()));
         }
 
         if (!Mix_OpenAudio(audio_device_, nullptr))
         {
-            SDL_Quit();
             throw std::runtime_error("Mix_OpenAudio failed: " + std::string(SDL_GetError()));
         }
     }
