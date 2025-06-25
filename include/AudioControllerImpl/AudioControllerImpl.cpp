@@ -363,7 +363,7 @@ void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noex
 
 
 
-    static const auto loop_until = [this, &stoken](const State state)
+    const auto loop_until = [this, stoken](const State state)
     {
         while (!stoken.stop_requested())
         {
