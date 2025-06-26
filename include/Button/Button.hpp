@@ -2,37 +2,11 @@
 // Created by Schizoneurax on 3/12/2025.
 //
 #pragma once
-#include <Event.hpp>
-#include <string>
-#include <variant>
-#include <concepts>
+#include <Typedefs.hpp>
 #include <functional>
+#include <stdexcept>
 
 struct IAudioController;
-
-template <typename T>
-concept Identifier = std::same_as<T, identifier_type>;
-
-template <typename T>
-concept NameType = std::same_as<T, name_type>;
-
-template <typename T>
-concept FilenameType = std::same_as<T, filename_type>;
-
-template <typename T>
-concept ButtonEvent =
-    std::same_as<T, PlayEvent> ||
-    std::same_as<T, PauseEvent> ||
-    std::same_as<T, StopEvent> ||
-    std::same_as<T, ResumeEvent>;
-
-template <typename T>
-concept ButtonAttr = NameType<T> || FilenameType<T> || Identifier<T>;
-
-template <typename T>
-concept ModifiableAttr = NameType<T> || FilenameType<T>;
-template <typename T>
-concept ButtonAttrArg = std::assignable_from<name_type&, T> || std::assignable_from<filename_type&, T>;
 
 class Button
 {
@@ -48,23 +22,15 @@ public:
     Button& operator=(const Button& other) = delete;
     Button& operator=(Button&& other) = delete;
 
-    /** Projector **/
-    template <ButtonAttr U>
-    using Proj = const U&(*)(const Button&);
-    using ProjVariant = std::variant<
-        Proj<name_type>,
-        Proj<identifier_type>,
-        Proj<filename_type>>;
-
     // The public method to obtain a projector given a key
     template <ButtonAttr Attr>
-    static ProjVariant Projector();
+    static ButtonProjectorVariant Projector();
 
 private:
     /** Create a projector that project a button to one of its member data
      * according to the template variable MemberPtr **/
     template <auto MemberPtr>
-    static ProjVariant createProjector();
+    static ButtonProjectorVariant createProjector();
 
 public:
     /** Getter & Setter  **/
@@ -113,7 +79,7 @@ void Button::modify(S&& arg)
 }
 
 template <auto MemberPtr>
-Button::ProjVariant Button::createProjector()
+ButtonProjectorVariant Button::createProjector()
 {
     // The `std::invoke_result_t` type trait calculates the resulting type we would get
     // by invoking the given member pointer (`MemberPtr`) on an object of a specific type.
@@ -133,7 +99,7 @@ Button::ProjVariant Button::createProjector()
 }
 
 template <ButtonAttr Attr>
-Button::ProjVariant Button::Projector()
+ButtonProjectorVariant Button::Projector()
 {
     using U = Attr;
     if constexpr (std::is_same_v<U, name_type>)

@@ -10,5 +10,5 @@ add_library(AudioControllerImpl
         STATIC
         AudioControllerImpl.cpp
         AudioControllerImpl.hpp)
-target_link_libraries(AudioControllerImpl PUBLIC IAudioController PRIVATE fmt::fmt SDLManager)
+target_link_libraries(AudioControllerImpl PUBLIC IAudioController PRIVATE Event EventQueue fmt::fmt SDLManager)
 target_include_directories(AudioControllerImpl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

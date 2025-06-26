@@ -3,7 +3,7 @@
 //
 
 #pragma once
-#include <Event.hpp>
+#include <Typedefs.hpp>
 
 //@formatter:off
 struct IAudioController

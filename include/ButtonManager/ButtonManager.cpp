@@ -5,6 +5,7 @@
 #include "ButtonManager.hpp"
 #include "IAudioController.hpp"
 #include "SpecialButtons.hpp"
+#include <algorithm>
 
 ButtonManager::ButtonManager(std::unique_ptr<IAudioController>&& controller)
 : audio_controller(std::move(controller))
@@ -97,6 +98,25 @@ std::optional<identifier_type> ButtonManager::getActiveButton() const
 {
     return audio_controller->active_button();
 }
+
+template <ButtonAttr Key>
+void ButtonManager::sortView(const std::function<bool(const Key&, const Key&)>& comp)
+{
+    const auto projector_variant = Button::Projector<Key>();
+    const auto& proj = std::get<ButtonProjector<Key>>(projector_variant);
+
+    auto projector = [this, proj](const identifier_type id)
+    {
+        return proj(*button_map.at(id));
+    };
+    std::ranges::sort(button_view, comp, projector);
+}
+
+template void ButtonManager::sortView<identifier_type>(const std::function<bool(const identifier_type&, const identifier_type&)>& cmp);
+template void ButtonManager::sortView<filename_type>(const std::function<bool(const filename_type&, const filename_type&)>& cmp);
+template void ButtonManager::sortView<name_type>(const std::function<bool(const name_type&, const name_type&)>& cmp);
+// template void ButtonManager::sortView<timestamp_type>(const std::function<bool(const timestamp_type&, const timestamp_type&)>& cmp);
+
 
 template <typename Name>
     requires std::assignable_from<name_type&, Name>

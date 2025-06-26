@@ -7,7 +7,6 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
-#include <stdexcept>
 #include <utility>
 
 template <typename Event>

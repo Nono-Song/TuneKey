@@ -5,25 +5,26 @@
 #include <thread>
 #include <cassert>
 #include <iostream>
+#include <Button.hpp>
+#include <SpecialButtons.hpp>
 #include "IAudioController.hpp"
 #include "AudioControllerFactory.hpp"
-#include "SpecialButtons.hpp"
 
 using namespace std::chrono_literals;
-void test_projector(const Button& button, const Button::ProjVariant& v)
+void test_projector(const Button& button, const ButtonProjectorVariant& v)
 {
     std::visit([&button]<typename T>(T&& arg)
     {
         using U = std::decay_t<T>;
-        if constexpr (std::is_same_v<U, Button::Proj<identifier_type>>)
+        if constexpr (std::is_same_v<U, ButtonProjector<identifier_type>>)
         {
             assert(arg(button) == button.getID());
         }
-        else if constexpr (std::is_same_v<U, Button::Proj<name_type>>)
+        else if constexpr (std::is_same_v<U, ButtonProjector<name_type>>)
         {
             assert(arg(button) == button.getName());
         }
-        else if constexpr (std::is_same_v<U, Button::Proj<filename_type>>)
+        else if constexpr (std::is_same_v<U, ButtonProjector<filename_type>>)
         {
             assert(arg(button) == button.getFilePath());
         }
@@ -70,7 +71,7 @@ void bm_test_worker()
     auto v2 = std::vector{id1, id5, id2, id4, id3};
     assert(view == v2);
 
-    bm.sortView(std::less<>());
+    bm.sortView<identifier_type>(std::less<>());
     auto v3 = std::vector{id1, id2, id3, id4, id5};
     assert(view == v3);
 
@@ -122,7 +123,7 @@ void bm_test_worker()
     assert(bm.getActiveButton() == id4);
     bm.modify_filename(id4, "yet_another_filename");
 
-    std::this_thread::sleep_for(12s);
+    std::this_thread::sleep_for(3s);
     bm.shutdown();
 
 }
@@ -182,9 +183,9 @@ void button_test_worker()
     test_projector(button, Button::Projector<filename_type>());
 
     button.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     button.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     // pause.interact();
     // std::this_thread::sleep_for(std::chrono::seconds(2));
     // resume.interact();
@@ -197,7 +198,7 @@ void button_test_worker()
     controller->shutdown();
     controller->start();
     button.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(2000));
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     controller->shutdown();
 }
 
@@ -264,7 +265,7 @@ int main()
     {
         // testAudioController();
         button_test_worker();
-        //bm_test_worker();
+        bm_test_worker();
 
 
     }
