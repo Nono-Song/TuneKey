@@ -171,8 +171,8 @@ void button_test_worker()
     assert(button.getName() == "test1");
     assert(button.getFilePath().empty());
 
-    button.modify<filename_type>("testpath.txt");
-    assert(button.getFilePath().string() == "testpath.txt");
+    button.modify<filename_type>("/Users/schizoneurax/Library/Mobile Documents/com~apple~CloudDocs/Downloads/异议（日语）-成步堂.wav");
+    assert(button.getFilePath().string() == "/Users/schizoneurax/Library/Mobile Documents/com~apple~CloudDocs/Downloads/异议（日语）-成步堂.wav");
 
     button.modify<name_type>("name");
     assert(button.getName() == "name");
@@ -185,19 +185,19 @@ void button_test_worker()
     std::this_thread::sleep_for(std::chrono::seconds(3));
     button.interact();
     std::this_thread::sleep_for(std::chrono::seconds(5));
-    pause.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    resume.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(10));
-    button.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(10));
-    stop.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    // pause.interact();
+    // std::this_thread::sleep_for(std::chrono::seconds(2));
+    // resume.interact();
+    // std::this_thread::sleep_for(std::chrono::seconds(10));
+    // button.interact();
+    // std::this_thread::sleep_for(std::chrono::seconds(10));
+    // stop.interact();
+    // std::this_thread::sleep_for(std::chrono::seconds(3));
 
     controller->shutdown();
     controller->start();
     button.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(15));
+    std::this_thread::sleep_for(std::chrono::seconds(2000));
     controller->shutdown();
 }
 
@@ -263,8 +263,10 @@ int main()
     try
     {
         // testAudioController();
-        // button_test_worker();
-        bm_test_worker();
+        button_test_worker();
+        //bm_test_worker();
+
+
     }
     catch (std::exception& e)
     {
