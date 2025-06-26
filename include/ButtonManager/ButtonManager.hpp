@@ -6,11 +6,13 @@
 #include <vector>
 #include <unordered_map>
 #include <optional>
-#include <algorithm>
-#include <Button.hpp>
+#include <memory>
+#include <functional>
+#include <Typedefs.hpp>
 
 
 struct IAudioController;
+class Button;
 
 class ButtonManager
 {
@@ -46,22 +48,8 @@ public:
     void modify_filename(identifier_type id, const filename_type& new_filename);
     void modify_filename(identifier_type id, const char* new_filename);
 
-    template <ButtonAttr Key = identifier_type, typename Comparator>
-        requires std::same_as<bool, std::invoke_result_t<Comparator, const Key&, const Key&>>
-    void sortView(Comparator cmp)
-    {
-        std::visit([this, cmp](const auto proj)
-                   {
-                       auto projector = [this, proj](const identifier_type id)
-                       {
-                           return proj(*button_map.at(id));
-                       };
-                       std::ranges::sort(button_view, cmp, projector);
-                   }
-                   ,
-                   Button::Projector<Key>()
-        );
-    }
+    template <ButtonAttr Key>
+    void sortView(const std::function<bool(const Key&, const Key&)>&);
 
     [[nodiscard]] std::optional<identifier_type> getActiveButton() const;
 

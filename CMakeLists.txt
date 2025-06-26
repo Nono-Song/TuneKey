@@ -69,6 +69,7 @@ add_subdirectory(include/Typedefs)
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
+        Button
         ButtonManager
         SDL3::SDL3
         fmt::fmt

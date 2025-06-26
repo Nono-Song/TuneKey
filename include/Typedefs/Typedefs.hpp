@@ -7,7 +7,6 @@
 #include <string>
 #include <filesystem>
 #include <concepts>
-#include <functional>
 
 struct PlayEvent;
 struct PauseEvent;
@@ -52,7 +51,8 @@ using ButtonProjector = const U&(*)(const Button&);
 using ButtonProjectorVariant = std::variant<
     ButtonProjector<name_type>,
     ButtonProjector<identifier_type>,
-    ButtonProjector<filename_type>>;
+    ButtonProjector<filename_type>,
+    ButtonProjector<timestamp_type>>;
 
 
 /** Event related types **/

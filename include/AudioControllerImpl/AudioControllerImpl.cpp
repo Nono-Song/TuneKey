@@ -7,6 +7,7 @@
 #include <chrono>
 #include <fmt/base.h>
 #include <SDLManager.hpp>
+#include <Event.hpp>
 #include "EventQueue.hpp"
 
 using namespace std::literals::chrono_literals;
