@@ -5,9 +5,10 @@
 #include <thread>
 #include <cassert>
 #include <iostream>
-#include "AudioController.hpp"
+#include "IAudioController.hpp"
 #include "AudioControllerFactory.hpp"
 #include "SpecialButtons.hpp"
+
 using namespace std::chrono_literals;
 void test_projector(const Button& button, const Button::ProjVariant& v)
 {
@@ -61,27 +62,27 @@ void bm_test_worker()
 
     auto& view = bm.getView();
 
-    bm.sortView<name_type>();
+    bm.sortView<name_type>(std::less<>());
     auto v1 = std::vector{id5, id4, id3, id2, id1};
     assert(view == v1);
 
-    bm.sortView<filename_type>();
+    bm.sortView<filename_type>(std::less<>());
     auto v2 = std::vector{id1, id5, id2, id4, id3};
     assert(view == v2);
 
-    bm.sortView();
+    bm.sortView(std::less<>());
     auto v3 = std::vector{id1, id2, id3, id4, id5};
     assert(view == v3);
 
-    bm.sortViewReverse<name_type>();
+    bm.sortView<name_type>(std::greater<>());
     std::ranges::reverse(v1);
     assert(view == v1);
 
-    bm.sortViewReverse<filename_type>();
+    bm.sortView<filename_type>(std::greater<>());
     std::ranges::reverse(v2);
     assert(view == v2);
 
-    bm.sortViewReverse<identifier_type>();
+    bm.sortView<identifier_type>(std::greater<>());
     std::ranges::reverse(v3);
     assert(view == v3);
 
@@ -126,7 +127,7 @@ void bm_test_worker()
 
 }
 
-struct MockAudioController final : AudioController
+struct MockAudioController final : IAudioController
 {
     void start() override
     {
@@ -158,7 +159,7 @@ struct MockAudioController final : AudioController
 
 void button_test_worker()
 {
-    const std::unique_ptr<AudioController> controller = AudioControllerFactory::createAudioController();
+    const std::unique_ptr<IAudioController> controller = AudioControllerFactory::createAudioController();
     controller->start();
 
     PlayButton button("test1", 0, controller.get());
@@ -170,8 +171,8 @@ void button_test_worker()
     assert(button.getName() == "test1");
     assert(button.getFilePath().empty());
 
-    button.modify<filename_type>("testpath.txt");
-    assert(button.getFilePath().string() == "testpath.txt");
+    button.modify<filename_type>("/Users/schizoneurax/Library/Mobile Documents/com~apple~CloudDocs/Downloads/异议（日语）-成步堂.wav");
+    assert(button.getFilePath().string() == "/Users/schizoneurax/Library/Mobile Documents/com~apple~CloudDocs/Downloads/异议（日语）-成步堂.wav");
 
     button.modify<name_type>("name");
     assert(button.getName() == "name");
@@ -184,19 +185,19 @@ void button_test_worker()
     std::this_thread::sleep_for(std::chrono::seconds(3));
     button.interact();
     std::this_thread::sleep_for(std::chrono::seconds(5));
-    pause.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    resume.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(10));
-    button.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(10));
-    stop.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    // pause.interact();
+    // std::this_thread::sleep_for(std::chrono::seconds(2));
+    // resume.interact();
+    // std::this_thread::sleep_for(std::chrono::seconds(10));
+    // button.interact();
+    // std::this_thread::sleep_for(std::chrono::seconds(10));
+    // stop.interact();
+    // std::this_thread::sleep_for(std::chrono::seconds(3));
 
     controller->shutdown();
     controller->start();
     button.interact();
-    std::this_thread::sleep_for(std::chrono::seconds(15));
+    std::this_thread::sleep_for(std::chrono::seconds(2000));
     controller->shutdown();
 }
 
@@ -262,8 +263,10 @@ int main()
     try
     {
         // testAudioController();
-        // button_test_worker();
-        bm_test_worker();
+        button_test_worker();
+        //bm_test_worker();
+
+
     }
     catch (std::exception& e)
     {

@@ -57,7 +57,7 @@ set(SDLMIXER_MOD OFF)
 set(SDLMIXER_OPUS OFF)
 set(SDLMIXER_VENDORED ON)   # tell SDL_mixer to build its own dependencies
 add_subdirectory(SDL_mixer EXCLUDE_FROM_ALL)
-add_subdirectory(include/AudioController)
+add_subdirectory(include/IAudioController)
 add_subdirectory(include/AudioControllerImpl)
 add_subdirectory(include/AudioControllerFactory)
 add_subdirectory(include/EventQueue)
@@ -68,8 +68,6 @@ add_subdirectory(include/ButtonManager)
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
-        AudioControllerFactory
-        AudioButton
         ButtonManager
         SDL3::SDL3
         fmt::fmt

@@ -9,12 +9,12 @@
 #include <condition_variable>
 #include <future>
 #include <optional>
-#include "AudioController.hpp"
+#include "IAudioController.hpp"
 
 template <typename T>
 class EventQueue;
 
-class AudioControllerImpl: public AudioController
+class AudioControllerImpl: public IAudioController
 {
 public:
     AudioControllerImpl();
@@ -45,7 +45,7 @@ private:
     void start_audio_thread() noexcept;
     // Audio thread main loop
     void audio_event_loop(const std::stop_token&);
-    void state_machine_loop(const std::stop_token& stoken) noexcept;
+    void state_machine_loop(const std::stop_token&) noexcept;
 
     // State change callback functions
     void play_callback(const PlayEvent&);
@@ -64,8 +64,11 @@ private:
     State curr_state_{State::Offline};
     filename_type curr_audio_path_{};
     std::optional<identifier_type> curr_active_button_{};
+
+    /**
+     * The playback_id makes clear if we need to play a new audio
+     **/
     std::optional<identifier_type> curr_playback_id_{};
-    std::atomic_int duration_{default_duration};
     std::condition_variable_any audio_condition_{};
 
     std::jthread state_machine_thread_{};

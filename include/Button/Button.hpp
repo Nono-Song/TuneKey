@@ -8,7 +8,7 @@
 #include <concepts>
 #include <functional>
 
-struct AudioController;
+struct IAudioController;
 
 template <typename T>
 concept Identifier = std::same_as<T, identifier_type>;
@@ -17,7 +17,7 @@ template <typename T>
 concept NameType = std::same_as<T, name_type>;
 
 template <typename T>
-concept Filename = std::same_as<T, filename_type>;
+concept FilenameType = std::same_as<T, filename_type>;
 
 template <typename T>
 concept ButtonEvent =
@@ -27,10 +27,10 @@ concept ButtonEvent =
     std::same_as<T, ResumeEvent>;
 
 template <typename T>
-concept ButtonAttr = NameType<T> || Filename<T> || Identifier<T>;
+concept ButtonAttr = NameType<T> || FilenameType<T> || Identifier<T>;
 
 template <typename T>
-concept ModifiableAttr = NameType<T> || Filename<T>;
+concept ModifiableAttr = NameType<T> || FilenameType<T>;
 template <typename T>
 concept ButtonAttrArg = std::assignable_from<name_type&, T> || std::assignable_from<filename_type&, T>;
 
@@ -39,8 +39,8 @@ class Button
 public:
     using event_type = Event;
     /** Ctor, Dtor and Copy Control **/
-    Button(const name_type&, identifier_type, AudioController*);
-    Button(name_type, identifier_type, filename_type, AudioController*);
+    Button(const name_type&, identifier_type, IAudioController*);
+    Button(name_type, identifier_type, filename_type, IAudioController*);
 
     Button(Button&& other) noexcept;
     virtual ~Button() noexcept;
@@ -82,7 +82,7 @@ protected:
     void handleEvent() const;
 
 private:
-    AudioController* controller_;
+    IAudioController* controller_;
     // Todo: Time of creation
     // Todo: Time of last usage
     name_type name_;
@@ -115,9 +115,43 @@ void Button::modify(S&& arg)
 template <auto MemberPtr>
 Button::ProjVariant Button::createProjector()
 {
+    // The `std::invoke_result_t` type trait calculates the resulting type we would get
+    // by invoking the given member pointer (`MemberPtr`) on an object of a specific type.
+    // The type we specify here (`const Button&`) is the key to our contract: it dictates
+    // what kind of parameter our final lambda will accept.
     using member_type = std::invoke_result_t<decltype(MemberPtr), const Button&>;
+
+    // We return a lambda that creates the "projection".
+    // Its parameter type, `const Button&`, MUST match the type used in `std::invoke_result_t`
+    // above. This consistency is what makes the type deduction work correctly.
     return [](const Button& btn) -> member_type
     {
+        // std::invoke is a helper that can call member functions or access member
+        // variables through pointers to them.
         return std::invoke(MemberPtr, btn);
     };
+}
+
+template <ButtonAttr Attr>
+Button::ProjVariant Button::Projector()
+{
+    using U = Attr;
+    if constexpr (std::is_same_v<U, name_type>)
+    {
+        return createProjector<&Button::name_>();
+    }
+    else if constexpr (std::is_same_v<U, identifier_type>)
+    {
+        return createProjector<&Button::id_>();
+    }
+    else if constexpr (std::is_same_v<U, filename_type>)
+    {
+        return createProjector<&Button::file_path_>();
+    }
+    else
+    {
+        static_assert(false,
+                      "Unhandled case in Button::Projector: Update if constexpr chain for ButtonAttr!");
+        throw std::logic_error("Unhandled case in Button::Projector");
+    }
 }

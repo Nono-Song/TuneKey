@@ -3,10 +3,10 @@
 //
 
 #include "ButtonManager.hpp"
-#include "AudioController.hpp"
+#include "IAudioController.hpp"
 #include "SpecialButtons.hpp"
 
-ButtonManager::ButtonManager(std::unique_ptr<AudioController>&& controller)
+ButtonManager::ButtonManager(std::unique_ptr<IAudioController>&& controller)
 : audio_controller(std::move(controller))
 {
 }
@@ -23,8 +23,6 @@ void ButtonManager::shutdown()
     audio_controller->shutdown();
 }
 
-
-
 const Button& ButtonManager::operator[](const identifier_type id) const
 {
     return *button_map.at(id);
@@ -32,6 +30,11 @@ const Button& ButtonManager::operator[](const identifier_type id) const
 
 identifier_type ButtonManager::addButton(name_type name, filename_type filepath)
 {
+    if (size(button_view) == MAX_NBUTTON)
+    {
+        throw std::out_of_range("Exceeded maximum allowable number of buttons");
+    }
+
     auto new_id = next_id_++;
     auto createButton = [this, &name, new_id, &filepath]()-> button_ptr
     {
@@ -90,7 +93,6 @@ void ButtonManager::reorder(const std::vector<identifier_type>::difference_type&
     button_view.insert(button_view.cbegin() + idx_to, id);
 }
 
-
 std::optional<identifier_type> ButtonManager::getActiveButton() const
 {
     return audio_controller->active_button();
@@ -98,20 +100,22 @@ std::optional<identifier_type> ButtonManager::getActiveButton() const
 
 template <typename Name>
     requires std::assignable_from<name_type&, Name>
-void ButtonManager::modify_button_name(const identifier_type id, Name&& name)
+void ButtonManager::modify_button_name(const identifier_type id, Name&& new_name)
 {
-    using T = decltype(name);
+    using T = decltype(new_name);
 
     auto& btn = button_map.at(id);
+    if (btn->getName() == new_name) { return; }
+
     auto nh = name_to_uuid.extract(btn->getName());
 
-    if (!name_to_uuid.contains(name) || name_to_uuid.at(name) == id)
+    if (!name_to_uuid.contains(new_name))
     {
-        btn->modify<name_type>(std::forward<T>(name));
+        btn->modify<name_type>(std::forward<T>(new_name));
     }
     else
     {
-        btn->modify<name_type>(name + "_2");
+        btn->modify<name_type>(new_name + "_2");
     }
 
     nh.key() = btn->getName();
@@ -121,41 +125,41 @@ void ButtonManager::modify_button_name(const identifier_type id, Name&& name)
 
 template <typename Filename>
     requires std::assignable_from<filename_type&, Filename>
-void ButtonManager::modify_button_filepath(const identifier_type id, Filename&& path)
+void ButtonManager::modify_button_filepath(const identifier_type id, Filename&& new_path)
 {
-    using T = decltype(path);
+    using T = decltype(new_path);
     auto& btn = button_map.at(id);
     if (getActiveButton() == id)
     {
         audio_controller->stop(id);
     }
 
-    btn->modify<filename_type>(std::forward<T>(path));
+    btn->modify<filename_type>(std::forward<T>(new_path));
 }
 
-void ButtonManager::modify_name(const identifier_type id, name_type&& name)
+void ButtonManager::modify_name(const identifier_type id, name_type&& new_name)
 {
-    modify_button_name(id, std::move(name));
+    modify_button_name(id, std::move(new_name));
 }
 
-void ButtonManager::modify_name(const identifier_type id, const name_type& name)
+void ButtonManager::modify_name(const identifier_type id, const name_type& new_name)
 {
-    modify_button_name(id, name);
+    modify_button_name(id, new_name);
 }
 
-void ButtonManager::modify_filename(const identifier_type id, filename_type&& filename)
+void ButtonManager::modify_filename(const identifier_type id, filename_type&& new_filename)
 {
-    modify_button_filepath(id, std::move(filename));
+    modify_button_filepath(id, std::move(new_filename));
 }
 
-void ButtonManager::modify_filename(const identifier_type id, const filename_type& filename)
+void ButtonManager::modify_filename(const identifier_type id, const filename_type& new_filename)
 {
-    modify_button_filepath(id, filename);
+    modify_button_filepath(id, new_filename);
 }
 
-void ButtonManager::modify_filename(const identifier_type id, const char* filename)
+void ButtonManager::modify_filename(const identifier_type id, const char* new_filename)
 {
-    modify_button_filepath(id, filename);
+    modify_button_filepath(id, new_filename);
 }
 
 
