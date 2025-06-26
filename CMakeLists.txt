@@ -63,6 +63,7 @@ add_subdirectory(include/AudioControllerFactory)
 add_subdirectory(include/EventQueue)
 add_subdirectory(include/Button)
 add_subdirectory(include/ButtonManager)
+add_subdirectory(include/Typedefs)
 
 # Main executable
 add_executable(${PROJECT_NAME} src/main.cpp)
