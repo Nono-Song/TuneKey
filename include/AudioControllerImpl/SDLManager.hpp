@@ -49,7 +49,7 @@ public:
         if (!music_ || !Mix_PlayMusic(music_, 0))
         {
             Mix_CloseAudio();
-            throw std::runtime_error(!music_ ? "Mix_LoadMUS: " : "Mix_PlayMusic: " + std::string(SDL_GetError()));
+            throw std::runtime_error((!music_ ? "Mix_LoadMUS: " : "Mix_PlayMusic: ") + std::string(SDL_GetError()));
         }
 
         return music_;
