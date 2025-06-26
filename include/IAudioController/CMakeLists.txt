@@ -1,4 +1,4 @@
 # IAudioController
-add_library(IAudioController STATIC IAudioController.cpp IAudioController.hpp)
-target_include_directories(IAudioController PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(IAudioController PUBLIC Event)
+add_library(IAudioController INTERFACE IAudioController.hpp)
+target_include_directories(IAudioController INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(IAudioController INTERFACE Event)
