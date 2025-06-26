@@ -351,7 +351,7 @@ void AudioControllerImpl::error_callback(const AudioErrorEvent&)
 
 void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noexcept
 {
-    static const auto visitor = Visitor{
+    const auto visitor = Visitor{
         [this](const PlayEvent& evt) { play_callback(evt); },
         [this](const PauseEvent& evt) { pause_callback(evt); },
         [this](const ResumeEvent& evt) { resume_callback(evt); },
@@ -364,7 +364,7 @@ void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noex
 
 
 
-    const auto loop_until = [this, stoken](const State state)
+    const auto loop_until = [this, &visitor, stoken](const State state)
     {
         while (!stoken.stop_requested())
         {
