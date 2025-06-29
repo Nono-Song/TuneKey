@@ -7,6 +7,7 @@
 #include <string>
 #include <filesystem>
 #include <concepts>
+#include <variant>
 
 struct PlayEvent;
 struct PauseEvent;
