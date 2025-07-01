@@ -6,7 +6,10 @@
 #include <memory>
 
 #include <IAudioController.hpp>
-class AudioControllerFactory {
-  public:
-    static std::unique_ptr<IAudioController> createAudioController();
-};
+namespace TuneKey {
+    class AudioControllerFactory
+    {
+        public:
+        static std::unique_ptr<IAudioController> createAudioController();
+    };
+}

@@ -5,6 +5,7 @@
 #include "AudioControllerFactory.hpp"
 #include <AudioControllerImpl.hpp>
 
+using namespace TuneKey;
 std::unique_ptr<IAudioController> AudioControllerFactory::createAudioController()
 {
   return std::make_unique<AudioControllerImpl>();

@@ -5,41 +5,44 @@
 #pragma once
 
 #include <queue>
-#include <mutex>
 #include <condition_variable>
 #include <utility>
 
-template <typename Event>
-class EventQueue
+
+namespace TuneKey
 {
-public:
-    void push(Event&& evt)
+    template <typename Event>
+    class EventQueue
     {
-        std::unique_lock lock(mutex_);
+    public:
+        void push(Event&& evt)
+        {
+            std::unique_lock lock(mutex_);
 
-        notfull_.wait(lock, [this]() { return queue_.size() < max_size; });
+            notfull_.wait(lock, [this]() { return queue_.size() < max_size; });
 
-        queue_.emplace(std::forward<Event>(evt));
-        nonempty_.notify_all();
-    }
+            queue_.emplace(std::forward<Event>(evt));
+            nonempty_.notify_all();
+        }
 
-    Event pop()
-    {
-        std::unique_lock lock(mutex_);
-        nonempty_.wait(lock, [this]() { return !queue_.empty(); });
+        Event pop()
+        {
+            std::unique_lock lock(mutex_);
+            nonempty_.wait(lock, [this]() { return !queue_.empty(); });
 
-        auto event = std::move(queue_.front());
-        queue_.pop();
-        lock.unlock();
+            auto event = std::move(queue_.front());
+            queue_.pop();
+            lock.unlock();
 
-        notfull_.notify_all();
-        return event;
-    }
+            notfull_.notify_all();
+            return event;
+        }
 
-private:
-    static constexpr std::size_t max_size = 20;
-    std::queue<Event> queue_{};
-    std::mutex mutex_{};
-    std::condition_variable_any nonempty_{};
-    std::condition_variable_any notfull_{};
-};
+    private:
+        static constexpr std::size_t max_size = 20;
+        std::queue<Event> queue_{};
+        std::mutex mutex_{};
+        std::condition_variable_any nonempty_{};
+        std::condition_variable_any notfull_{};
+    };
+}

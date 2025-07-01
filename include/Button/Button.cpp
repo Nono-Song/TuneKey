@@ -4,56 +4,22 @@
 #include "Button.hpp"
 #include <IAudioController.hpp>
 
-Button::Button(const name_type& name, const identifier_type id, IAudioController* controller)
-    : Button(name, id, "", controller)
+using namespace TuneKey;
+
+Button::Button(const name_type& name, const identifier_type id)
+    : Button(name, id, "")
 {
 }
 
-Button::Button(name_type name, const identifier_type id, filename_type path, IAudioController* controller)
-    : controller_(controller), name_(std::move(name)), id_(id), file_path_(std::move(path))
+Button::Button(name_type name, const identifier_type id, filename_type path)
+    : name_(std::move(name)), id_(id), file_path_(std::move(path))
 {
 }
 
 Button::Button(Button&& other) noexcept
-    : controller_(other.controller_), name_{std::move(other.name_)}, id_{other.id_},
+    : name_{std::move(other.name_)}, id_{other.id_},
       file_path_{std::move(other.file_path_)}
 {
 }
 
 Button::~Button() noexcept = default;
-
-template <ButtonEvent Evt>
-void Button::handleEvent() const
-{
-    if constexpr (std::is_same_v<Evt, PlayEvent>)
-    {
-        controller_->play(id_, file_path_);
-    }
-    else if constexpr (std::is_same_v<Evt, PauseEvent>)
-    {
-        controller_->pause(id_);
-    }
-    else if constexpr (std::is_same_v<Evt, ResumeEvent>)
-    {
-        controller_->resume(id_);
-    }
-    else if constexpr (std::is_same_v<Evt, StopEvent>)
-    {
-        controller_->stop(id_);
-    }
-    else
-    {
-        static_assert(false,
-                      "Unhandled case in Button::handleEvent: "
-                      "not a Button event or change in ButtonEvent concept");
-    }
-}
-
-
-template void Button::handleEvent<PlayEvent>() const;
-
-template void Button::handleEvent<PauseEvent>() const;
-
-template void Button::handleEvent<ResumeEvent>() const;
-
-template void Button::handleEvent<StopEvent>() const;

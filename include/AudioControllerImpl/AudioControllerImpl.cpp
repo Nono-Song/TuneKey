@@ -11,6 +11,7 @@
 #include "EventQueue.hpp"
 
 using namespace std::literals::chrono_literals;
+using namespace TuneKey;
 
 inline std::optional<identifier_type>& operator++(std::optional<identifier_type>& id)
 {
@@ -26,7 +27,7 @@ template <typename... Args>
 struct Visitor: Args... { using Args::operator()...; };
 
 AudioControllerImpl::AudioControllerImpl()
-: event_queue_{std::make_unique<EventQueue<Event>>()} {}
+: event_queue_{std::make_unique<EventQueue<event_t>>()} {}
 
 // @formatter:on
 AudioControllerImpl::~AudioControllerImpl()
@@ -39,14 +40,14 @@ AudioControllerImpl::~AudioControllerImpl()
     }
 }
 
-Event AudioControllerImpl::pop_event()
+event_t AudioControllerImpl::pop_event()
 {
     if (event_queue_)
     {
         return event_queue_->pop();
     }
 
-    throw std::runtime_error("Event queue not initialized!");
+    throw std::runtime_error("event_t queue not initialized!");
 }
 
 void AudioControllerImpl::start_audio_thread() noexcept
@@ -349,20 +350,17 @@ void AudioControllerImpl::error_callback(const AudioErrorEvent&)
 }
 
 
-void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noexcept
-{
+void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noexcept {
     const auto visitor = Visitor{
-        [this](const PlayEvent& evt) { play_callback(evt); },
-        [this](const PauseEvent& evt) { pause_callback(evt); },
-        [this](const ResumeEvent& evt) { resume_callback(evt); },
-        [this](const StopEvent& evt) { stop_callback(evt); },
-        [this](const AudioReadyEvent& evt) { audio_ready_callback(evt); },
-        [this](const AudioFinishedEvent& evt) { audio_finished_callback(evt); },
-        [this](const ShutdownEvent& evt) { shutdown_callback(evt); },
-        [this](const AudioErrorEvent& evt) { error_callback(evt); },
+        [this](const PlayEvent &evt) { play_callback(evt); },
+        [this](const PauseEvent &evt) { pause_callback(evt); },
+        [this](const ResumeEvent &evt) { resume_callback(evt); },
+        [this](const StopEvent &evt) { stop_callback(evt); },
+        [this](const AudioReadyEvent &evt) { audio_ready_callback(evt); },
+        [this](const AudioFinishedEvent &evt) { audio_finished_callback(evt); },
+        [this](const ShutdownEvent &evt) { shutdown_callback(evt); },
+        [this](const AudioErrorEvent &evt) { error_callback(evt); },
     };
-
-
 
     const auto loop_until = [this, &visitor, stoken](const State state)
     {
@@ -372,8 +370,7 @@ void AudioControllerImpl::state_machine_loop(const std::stop_token& stoken) noex
             {
                 std::visit(visitor, pop_event());
                 if (std::shared_lock lock(state_machine_mutex_);
-                    curr_state_ == state)
-                    { break; }
+                    curr_state_ == state) { break; }
             }
             catch (std::exception& e)
             {

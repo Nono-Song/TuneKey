@@ -10,64 +10,68 @@
 #include <functional>
 #include <Typedefs.hpp>
 
-
-struct IAudioController;
-class Button;
-
-class ButtonManager
+namespace TuneKey
 {
-public:
-    using button_type = Button;
-    using button_ptr = std::unique_ptr<button_type>;
+    struct IAudioController;
+    class Button;
 
-    explicit ButtonManager(std::unique_ptr<IAudioController>&& controller);
-    ~ButtonManager();
+    class ButtonManager
+    {
+    public:
+        using button_type = Button;
+        using button_ptr = std::unique_ptr<button_type>;
 
-    ButtonManager(const ButtonManager&) = delete;
-    ButtonManager(ButtonManager&&) noexcept = default;
-    ButtonManager& operator=(const ButtonManager&) = delete;
-    ButtonManager& operator=(ButtonManager&&) = delete;
+        explicit ButtonManager(std::unique_ptr<IAudioController>&& controller);
+        ~ButtonManager();
 
-    void start();
-    void shutdown();
+        ButtonManager(const ButtonManager&) = delete;
+        ButtonManager(ButtonManager&&) noexcept = default;
+        ButtonManager& operator=(const ButtonManager&) = delete;
+        ButtonManager& operator=(ButtonManager&&) = delete;
 
-    const button_type& operator[](identifier_type id) const;
+        void start();
+        void shutdown();
 
-    identifier_type addButton(name_type name, filename_type filepath = "");
-    void deleteButton(const identifier_type& target_id);
+        const button_type& operator[](identifier_type id) const;
 
-    [[nodiscard]] const std::vector<identifier_type>& getView() const { return button_view; }
+        identifier_type add_button(name_type name, filename_type filepath = "");
+        void delete_button(const identifier_type& target_id);
 
-    void reorder(const std::vector<identifier_type>::difference_type& idx_from,
-                 const std::vector<identifier_type>::difference_type& idx_to);
+        void press_button(const identifier_type& id);
+
+        [[nodiscard]] const std::vector<identifier_type>& get_view() const { return button_view_; }
+
+        void reorder(const std::vector<identifier_type>::difference_type& idx_from,
+                     const std::vector<identifier_type>::difference_type& idx_to);
 
 
-    void modify_name(identifier_type id, name_type&& new_name);
-    void modify_name(identifier_type id, const name_type& new_name);
-    void modify_filename(identifier_type id, filename_type&& new_filename);
-    void modify_filename(identifier_type id, const filename_type& new_filename);
-    void modify_filename(identifier_type id, const char* new_filename);
+        void modify_name(identifier_type id, name_type&& new_name);
+        void modify_name(identifier_type id, const name_type& new_name);
+        void modify_filename(identifier_type id, filename_type&& new_filename);
+        void modify_filename(identifier_type id, const filename_type& new_filename);
+        void modify_filename(identifier_type id, const char* new_filename);
 
-    template <ButtonAttr Key>
-    void sortView(const std::function<bool(const Key&, const Key&)>&);
+        template <typename Key>
+        void sort(const std::function<bool(const Key&, const Key&)>&);
 
-    [[nodiscard]] std::optional<identifier_type> getActiveButton() const;
+        [[nodiscard]] std::optional<identifier_type> getActiveButton() const;
 
-private:
-    template <typename Name>
-        requires std::assignable_from<name_type&, Name>
-    void modify_button_name(identifier_type id, Name&& new_name);
+    private:
+        template <typename Name>
+            requires std::assignable_from<name_type&, Name>
+        void modify_button_name(identifier_type id, Name&& new_name);
 
-    template <typename Filename>
-        requires std::assignable_from<filename_type&, Filename>
-    void modify_button_filepath(identifier_type id, Filename&& new_path);
+        template <typename Filename>
+            requires std::assignable_from<filename_type&, Filename>
+        void modify_button_filepath(identifier_type id, Filename&& new_path);
 
-    static constexpr size_t MAX_NBUTTON = 100;
+        static constexpr size_t MAX_NBUTTON = 100;
 
-    identifier_type next_id_ = 0;
-    std::unique_ptr<IAudioController> audio_controller;
+        identifier_type next_id_ = 0;
+        std::unique_ptr<IAudioController> audio_controller_;
 
-    std::unordered_map<identifier_type, button_ptr> button_map{};
-    std::vector<identifier_type> button_view{};
-    std::unordered_map<name_type, identifier_type> name_to_uuid{};
-};
+        std::unordered_map<identifier_type, button_ptr> button_map_{};
+        std::vector<identifier_type> button_view_{};
+        std::unordered_map<name_type, identifier_type> name_to_uuid_{};
+    };
+}

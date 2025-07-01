@@ -5,4 +5,4 @@ target_link_libraries(ButtonManager
         PUBLIC
         AudioControllerFactory
         PRIVATE
-        Button)
+        AudioButton)
